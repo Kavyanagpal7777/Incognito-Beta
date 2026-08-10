@@ -47,7 +47,6 @@ import MessagesView from './components/MessagesView';
 import ProfileView from './components/ProfileView';
 import SecurityCenter from './components/SecurityCenter';
 import UsernameChangePage from './components/UsernameChangePage';
-import OAuthUsernameModal from './components/OAuthUsernameModal';
 import AIUsernameGenerator from './components/AIUsernameGenerator';
 import IncognitoLogo from './components/IncognitoLogo';
 import InteractiveAtmosphere from './components/InteractiveAtmosphere';
@@ -129,74 +128,6 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-  // OAuth complete-registration step state
-  const [oauthStep, setOauthStep] = useState<{
-    isOpen: boolean;
-    platform: 'Google' | 'Facebook';
-    email: string;
-    realName: string;
-    providerId?: string;
-  } | null>(null);
-
-  const oauthActiveRef = useRef<boolean>(false);
-
-  // LISTEN FOR OAUTH POPUP CALLBACK MESSAGES
-  useEffect(() => {
-    const handleOAuthMessage = (event: MessageEvent) => {
-      const data = event.data;
-      if (!data || typeof data !== 'object') return;
-
-      if (data.type === 'OAUTH_AUTH_CANCELLED') {
-        oauthActiveRef.current = true;
-        setIsSubmitting(false);
-        const msg = data.provider === 'Facebook'
-          ? 'Facebook sign-in was cancelled.'
-          : 'Google sign-in was cancelled.';
-        triggerToast(msg, 'info');
-      } else if (data.type === 'OAUTH_AUTH_FAILED') {
-        oauthActiveRef.current = true;
-        setIsSubmitting(false);
-        const msg = data.provider === 'Facebook'
-          ? 'Unable to sign in with Facebook. Please try again.'
-          : 'Unable to sign in with Google. Please try again.';
-        triggerToast(msg, 'error');
-      } else if (data.type === 'OAUTH_AUTH_SUCCESS') {
-        oauthActiveRef.current = true;
-        setIsSubmitting(false);
-
-        if (data.isNewUser) {
-          // New account -> Show Public Persona creation screen
-          setOauthStep({
-            isOpen: true,
-            platform: data.provider || 'Facebook',
-            email: data.email || (data.provider === 'Facebook' ? 'oauth_user@facebook.com' : 'oauth_user@google.com'),
-            realName: data.realName || `${data.provider} Account Holder`,
-            providerId: data.facebookId || data.googleId
-          });
-        } else if (data.user) {
-          // Existing linked account -> Log directly into existing Incógnito account & redirect to home feed
-          const existingAccount: UserAccount = data.user;
-          setCurrentUser(existingAccount);
-          setIsAuthenticated(true);
-          localStorage.setItem('incognito_current_user', JSON.stringify(existingAccount));
-
-          if (existingAccount.role === 'super_admin' || existingAccount.role === 'owner' || existingAccount.role === 'admin') {
-            setSidebarTab('admin');
-            window.location.hash = '#/admin';
-            triggerToast(`Welcome back, Administrator @${existingAccount.username}!`, 'success');
-          } else {
-            setSidebarTab('home');
-            window.location.hash = '#/home';
-            triggerToast(`Welcome back, @${existingAccount.username}!`, 'success');
-          }
-        }
-      }
-    };
-
-    window.addEventListener('message', handleOAuthMessage);
-    return () => window.removeEventListener('message', handleOAuthMessage);
-  }, []);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -548,101 +479,6 @@ export default function App() {
     }
   };
 
-  // SOCIAL AUTHENTICATION HANDLER
-  const handleSocialAuthTrigger = async (platform: 'Google' | 'Facebook') => {
-    setIsSubmitting(true);
-    setSubmitMessage(`Initiating ${platform} authentication...`);
-
-    try {
-      if (platform === 'Google') {
-        setIsSubmitting(false);
-        setOauthStep({
-          isOpen: true,
-          platform: 'Google',
-          email: '',
-          realName: 'Google Account Member',
-          providerId: `usr_google_${Date.now().toString(36)}`
-        });
-        return;
-      }
-
-      if (platform === 'Facebook') {
-        const res = await fetch(`/api/auth/oauth-url?provider=Facebook`);
-        const data = await res.json();
-        setIsSubmitting(false);
-        if (data.url) {
-          window.open(data.url, 'facebook_popup', 'width=600,height=700');
-        } else {
-          setOauthStep({
-            isOpen: true,
-            platform: 'Facebook',
-            email: '',
-            realName: 'Facebook Account Member',
-            providerId: `usr_fb_${Date.now().toString(36)}`
-          });
-        }
-        return;
-      }
-    } catch (err: any) {
-      console.error(`${platform} OAuth Error:`, err);
-      setIsSubmitting(false);
-      triggerToast(`${platform} sign-in could not be completed. Please try again.`, 'error');
-    }
-  };
-
-  // Complete social registration after picking Username
-  const handleOauthUsernameComplete = async (username: string) => {
-    if (!oauthStep) return;
-
-    setIsSubmitting(true);
-    setSubmitMessage('Finalizing your secure Incógnito profile...');
-
-    try {
-      const oauthId = oauthStep.providerId || `usr_oauth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-      const response = await fetch('/api/auth/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: oauthId,
-          username,
-          email: oauthStep.email,
-          realName: oauthStep.realName,
-          loginMethod: oauthStep.platform,
-          facebookId: oauthStep.platform === 'Facebook' ? oauthId : undefined,
-          googleId: oauthStep.platform === 'Google' ? oauthId : undefined
-        })
-      });
-
-      const data = await response.json();
-      setIsSubmitting(false);
-
-      if (data.success && data.user) {
-        const newAccount: UserAccount = data.user;
-        setCurrentUser(newAccount);
-        setIsAuthenticated(true);
-        localStorage.setItem('incognito_current_user', JSON.stringify(newAccount));
-
-        setOauthStep(null);
-
-        if (data.redirectTo === '/admin') {
-          setSidebarTab('admin');
-          window.location.hash = '#/admin';
-          triggerToast(`OAuth Admin verified! Governance Panel unlocked.`, 'success');
-        } else {
-          setSidebarTab('home');
-          window.location.hash = '#/home';
-          triggerToast('Registration finalized! Welcome to Incógnito.', 'success');
-        }
-      } else {
-        triggerToast(data.error || 'Unable to complete registration.', 'error');
-      }
-    } catch (err) {
-      setIsSubmitting(false);
-      triggerToast('Registration error occurred. Please try again.', 'error');
-    }
-  };
-
-
   // LOGOUT PROCESS
   const handleLogout = () => {
     setIsAuthenticated(false);
@@ -772,20 +608,6 @@ export default function App() {
               </motion.p>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Social Register username step */}
-      <AnimatePresence>
-        {oauthStep?.isOpen && (
-          <OAuthUsernameModal
-            platform={oauthStep.platform}
-            email={oauthStep.email}
-            realName={oauthStep.realName}
-            existingUsernames={accounts.map(acc => acc.username)}
-            onComplete={handleOauthUsernameComplete}
-            onCancel={() => setOauthStep(null)}
-          />
         )}
       </AnimatePresence>
 
@@ -1308,51 +1130,6 @@ export default function App() {
                         <ArrowRight className="w-4 h-4 text-white" />
                       </button>
 
-                      {/* FEDERATED AUTH DIVIDER */}
-                      <div className="relative flex items-center my-2">
-                        <div className="flex-grow border-t border-white/10" />
-                        <span className="flex-shrink mx-2 text-[9px] sm:text-[10px] text-violet-300/80 uppercase tracking-widest font-black">
-                          ──────── FEDERATED AUTH ────────
-                        </span>
-                        <div className="flex-grow border-t border-white/10" />
-                      </div>
-
-                      {/* SOCIAL OAUTH BUTTONS */}
-                      <div className="flex flex-col lg:flex-row gap-2">
-                        {/* Button 1: Google */}
-                        <button
-                          onClick={() => handleSocialAuthTrigger('Google')}
-                          type="button"
-                          className="w-full lg:w-[48%] min-h-[48px] flex items-center justify-center space-x-2.5 bg-white hover:bg-slate-100 text-slate-900 border border-white/30 py-2.5 px-4 rounded-xl cursor-pointer select-none transition-all duration-200 font-bold text-xs sm:text-[13px] tracking-wide shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.98] relative overflow-hidden group"
-                          id="google-auth-btn"
-                        >
-                          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                            <path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" fill="#FBBC05" />
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
-                          </svg>
-                          <span className="whitespace-nowrap">
-                            {authTab === 'signup' ? 'Sign Up with Google' : 'Continue with Google'}
-                          </span>
-                        </button>
-
-                        {/* Button 2: Facebook */}
-                        <button
-                          onClick={() => handleSocialAuthTrigger('Facebook')}
-                          type="button"
-                          className="w-full lg:w-[48%] min-h-[48px] flex items-center justify-center space-x-2.5 bg-[#1877F2] hover:bg-[#166fe5] text-white border border-[#1877F2]/40 py-3 px-4 rounded-[16px] cursor-pointer select-none transition-all duration-200 font-bold text-xs sm:text-[13px] tracking-wide shadow-lg shadow-[#1877F2]/30 hover:shadow-[0_0_20px_rgba(24,119,242,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] relative overflow-hidden group"
-                          id="facebook-auth-btn"
-                        >
-                          <svg className="w-4 h-4 text-white flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                          </svg>
-                          <span className="whitespace-nowrap">
-                            {authTab === 'signup' ? 'Sign Up with Facebook' : 'Continue with Facebook'}
-                          </span>
-                        </button>
-                      </div>
-
                       {/* Bottom Status Badges */}
                       <div className="pt-2 border-t border-white/5 flex items-center justify-center gap-2 text-[10px] text-white/50 font-medium">
                         <span>✓ Anonymous</span>
@@ -1704,18 +1481,6 @@ export default function App() {
                       body: JSON.stringify({ karma: newKarma })
                     }).catch(err => console.error('Error syncing karma to server:', err));
                   }}
-                />
-              )}
-
-              {/* OAUTH USERNAME SELECTION MODAL */}
-              {oauthStep && oauthStep.isOpen && (
-                <OAuthUsernameModal
-                  platform={oauthStep.platform}
-                  email={oauthStep.email}
-                  realName={oauthStep.realName}
-                  existingUsernames={accounts.map(a => a.username)}
-                  onCancel={() => setOauthStep(null)}
-                  onComplete={(selectedUsername) => handleOauthUsernameComplete(selectedUsername)}
                 />
               )}
 

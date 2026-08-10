@@ -436,28 +436,17 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                 </div>
               </div>
 
-              {/* Connected OAuth Credentials */}
+              {/* Authentication Gateway */}
               <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
                 <div>
-                  <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold block">Connected OAuth Platforms</span>
+                  <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold block">Authentication Protocol</span>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      currentUser.loginMethod === 'Google' || currentUser.googleId
-                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' 
-                        : 'bg-white/5 text-white/20 border border-white/5'
-                    }`}>
-                      Google Auth
-                    </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      currentUser.loginMethod === 'Facebook' || currentUser.facebookId
-                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' 
-                        : 'bg-white/5 text-white/20 border border-white/5'
-                    }`}>
-                      Facebook Auth
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                      Zero-Knowledge Vault ({currentUser.loginMethod || 'Direct'})
                     </span>
                   </div>
                 </div>
-                <span className="text-[10px] text-white/30 italic font-medium">Gateway: {currentUser.loginMethod}</span>
+                <span className="text-[10px] text-white/30 italic font-medium">Gateway: {currentUser.loginMethod || 'Direct Vault'}</span>
               </div>
 
               {/* TWO-FACTOR AUTHENTICATION (2FA) SECTION */}
