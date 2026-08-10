@@ -445,6 +445,12 @@ export default function App() {
             loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
           })
         });
+
+        console.log('[REGISTRATION_RESPONSE]', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        });
       } catch (networkErr: any) {
         console.error('[REGISTRATION_ERROR] Network/Fetch Exception:', networkErr);
         setIsSubmitting(false);
