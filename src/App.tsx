@@ -430,21 +430,51 @@ export default function App() {
 
     try {
       const generatedUserId = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-      const response = await fetch('/api/auth/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: generatedUserId,
-          username: signupUsername.trim(),
-          realName: signupRealName.trim() || 'Anonymous Vault Member',
-          email: signupMode === 'email' ? signupEmail.trim() : undefined,
-          phone: signupMode === 'phone' ? signupPhone.replace(/\s+/g, '') : undefined,
-          password: signupPassword,
-          loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
-        })
-      });
+      let response;
+      try {
+        response = await fetch('/api/auth/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: generatedUserId,
+            username: signupUsername.trim(),
+            realName: signupRealName.trim() || 'Anonymous Vault Member',
+            email: signupMode === 'email' ? signupEmail.trim() : undefined,
+            phone: signupMode === 'phone' ? signupPhone.replace(/\s+/g, '') : undefined,
+            password: signupPassword,
+            loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
+          })
+        });
+      } catch (networkErr: any) {
+        console.error('[REGISTRATION_DIAGNOSTICS] Network/Fetch Error:', {
+          endpoint: '/api/auth/sync',
+          method: 'POST',
+          status: 0,
+          error: networkErr?.message || networkErr,
+          stack: networkErr?.stack,
+          source: 'src/App.tsx:handleSignupSubmit'
+        });
+        setIsSubmitting(false);
+        triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
+        return;
+      }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonErr: any) {
+        console.error('[REGISTRATION_DIAGNOSTICS] JSON Parse Error:', {
+          endpoint: '/api/auth/sync',
+          method: 'POST',
+          status: response.status,
+          error: jsonErr?.message || jsonErr,
+          source: 'src/App.tsx:handleSignupSubmit'
+        });
+        setIsSubmitting(false);
+        triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
+        return;
+      }
+
       setIsSubmitting(false);
 
       if (data.success && data.user) {
@@ -474,11 +504,26 @@ export default function App() {
           triggerToast('Your secure public identity has been forged!', 'success');
         }
       } else {
-        triggerToast(data.error || 'Signup failed.', 'error');
+        console.error('[REGISTRATION_DIAGNOSTICS] Registration API Returned Error:', {
+          endpoint: '/api/auth/sync',
+          method: 'POST',
+          status: response.status,
+          responseBody: data,
+          errorMessage: data.error,
+          source: 'src/App.tsx:handleSignupSubmit'
+        });
+        triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
       }
     } catch (err: any) {
+      console.error('[REGISTRATION_DIAGNOSTICS] Unhandled Exception:', {
+        endpoint: '/api/auth/sync',
+        method: 'POST',
+        error: err?.message || err,
+        stack: err?.stack,
+        source: 'src/App.tsx:handleSignupSubmit'
+      });
       setIsSubmitting(false);
-      triggerToast('Registration error occurred: ' + (err?.message || 'Server connection issue'), 'error');
+      triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
     }
   };
 

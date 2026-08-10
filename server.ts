@@ -915,50 +915,59 @@ app.get('/api/auth/check-user', (req, res) => {
 // AUTHENTICATION SYNC ENDPOINT
 // -------------------------------------------------------------------------
 app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
-  const {
-    userId: rawUserId,
-    email,
-    phone,
-    username,
-    avatarUrl,
-    loginMethod = 'Email',
-    realName,
-    password
-  } = req.body;
+  try {
+    const {
+      userId: rawUserId,
+      email,
+      phone,
+      username,
+      avatarUrl,
+      loginMethod = 'Email',
+      realName,
+      password
+    } = req.body;
 
-  const targetUserId = rawUserId || (email ? `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
+    const targetUserId = rawUserId || (email ? `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
 
-  if (!targetUserId) {
-    return res.status(400).json({ success: false, error: "Missing User ID" });
-  }
+    if (!targetUserId) {
+      console.error('[SERVER_REGISTRATION_DIAGNOSTICS] Status: 400 - Missing User ID', {
+        endpoint: '/api/auth/sync',
+        method: 'POST',
+        error: 'Missing User ID'
+      });
+      return res.status(400).json({ success: false, error: "Missing User ID" });
+    }
 
-  // 1. Check if account already exists by username, email, or phone
-  let existingUser = accountsStore.find(
-    a => (username && a.username.toLowerCase() === username.trim().toLowerCase()) ||
-         (email && a.email?.toLowerCase() === email.trim().toLowerCase()) ||
-         (phone && a.phone === phone)
-  );
+    // 1. Check if account already exists by username, email, or phone
+    let existingUser = accountsStore.find(
+      a => (username && a.username.toLowerCase() === username.trim().toLowerCase()) ||
+           (email && a.email?.toLowerCase() === email.trim().toLowerCase()) ||
+           (phone && a.phone === phone)
+    );
 
-  if (existingUser) {
-    if (email && existingUser.email?.toLowerCase() === email.trim().toLowerCase()) {
+    if (existingUser) {
+      let duplicateError = "Account already exists.";
+      if (email && existingUser.email?.toLowerCase() === email.trim().toLowerCase()) {
+        duplicateError = "An account with this email address already exists. Please log in.";
+      } else if (phone && existingUser.phone === phone) {
+        duplicateError = "An account with this mobile number already exists. Please log in.";
+      } else if (username && existingUser.username.toLowerCase() === username.trim().toLowerCase()) {
+        duplicateError = "This handle is already taken. Please choose another username.";
+      }
+
+      console.error('[SERVER_REGISTRATION_DIAGNOSTICS] Status: 400 - Duplicate Identifier', {
+        endpoint: '/api/auth/sync',
+        method: 'POST',
+        error: duplicateError,
+        username: username?.trim(),
+        loginMethod
+      });
+
       return res.status(400).json({
         success: false,
-        error: "An account with this email address already exists. Please log in."
+        error: duplicateError
       });
     }
-    if (phone && existingUser.phone === phone) {
-      return res.status(400).json({
-        success: false,
-        error: "An account with this mobile number already exists. Please log in."
-      });
-    }
-    if (username && existingUser.username.toLowerCase() === username.trim().toLowerCase()) {
-      return res.status(400).json({
-        success: false,
-        error: "This handle is already taken. Please choose another username."
-      });
-    }
-  }
 
   // 2. Assign default role (check super_admin email rule)
   let assignedRole: 'owner' | 'super_admin' | 'admin' | 'moderator' | 'user' = 'user';
@@ -1028,6 +1037,19 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
     isAdmin,
     redirectTo
   });
+  } catch (serverErr: any) {
+    console.error('[SERVER_REGISTRATION_DIAGNOSTICS] Status: 500 - Internal Server Error', {
+      endpoint: '/api/auth/sync',
+      method: 'POST',
+      error: serverErr?.message || serverErr,
+      stack: serverErr?.stack,
+      source: 'server.ts:app.post("/api/auth/sync")'
+    });
+    return res.status(500).json({
+      success: false,
+      error: "Internal registration server exception: " + (serverErr?.message || "Unknown error")
+    });
+  }
 });
 
 // -------------------------------------------------------------------------
