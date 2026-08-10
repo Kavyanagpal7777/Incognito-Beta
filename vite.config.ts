@@ -4,7 +4,12 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const clerkKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_dG9sZXJhbnQtd29tYmF0LTUzLmNsZXJrLmFjY291bnRzLmRldiQ';
   return {
+    define: {
+      'process.env.CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkKey),
+      'process.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkKey),
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

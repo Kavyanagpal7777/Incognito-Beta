@@ -17,6 +17,7 @@ import {
   Lock
 } from 'lucide-react';
 import { generateUsernameSuggestions } from '../data/mockData';
+import { generateAnonymousUsernames } from '../utils/usernameGenerator';
 import { UserAccount } from '../types';
 import AIUsernameGenerator from './AIUsernameGenerator';
 
@@ -37,7 +38,14 @@ export default function OAuthUsernameModal({
   onComplete, 
   onCancel 
 }: OAuthUsernameModalProps) {
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(() => {
+    const initialNames = generateAnonymousUsernames({
+      count: 1,
+      existingUsernames,
+      excludePersonal: [email, realName]
+    });
+    return initialNames[0] || 'ShadowFox';
+  });
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [checking, setChecking] = useState(false);
   const [status, setStatus] = useState<'empty' | 'validating' | 'available' | 'taken' | 'invalid'>('empty');
@@ -139,7 +147,7 @@ export default function OAuthUsernameModal({
         {/* Info Box explaining privacy-first flow */}
         <div className="p-3.5 rounded-2xl bg-violet-950/20 border border-violet-500/15 text-left mb-5">
           <p className="text-[10.5px] text-violet-300 leading-normal">
-            🛡️ <strong>Absolute Privacy Shield:</strong> Your Google details (Name: <strong>{realName}</strong>, Email: <strong>{email}</strong>) will be isolated in our security vault. They are <strong>never</strong> displayed to anyone else.
+            🛡️ <strong>Absolute Privacy Shield:</strong> Your {platform} account details (Name: <strong>{realName}</strong>, Email: <strong>{email}</strong>) are encrypted and isolated in our security vault. They are <strong>never</strong> displayed publicly.
           </p>
         </div>
 

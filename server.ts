@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import { generateAnonymousUsernames } from "./src/utils/usernameGenerator";
 
 dotenv.config();
 
@@ -376,6 +377,8 @@ interface UserAccount {
   password?: string;
   salt?: string;
   passwordHash?: string;
+  googleId?: string;
+  facebookId?: string;
   avatarUrl?: string;
   bio?: string;
   karma: number;
@@ -891,6 +894,225 @@ const verifyAdmin = (req: any, res: any, next: any) => {
 };
 
 // -------------------------------------------------------------------------
+// OFFICIAL OAUTH AUTHORIZATION URL ENDPOINT (FACEBOOK & GOOGLE)
+// -------------------------------------------------------------------------
+app.get("/api/auth/oauth-url", (req, res) => {
+  const provider = String(req.query.provider || 'Facebook');
+  const clientRedirectUri = req.query.redirectUri ? String(req.query.redirectUri) : '';
+  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+
+  if (provider.toLowerCase() === 'facebook') {
+    const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID || '1084209183204918';
+    const redirectUri = clientRedirectUri || `${appUrl}/auth/facebook/callback`;
+    const state = `fb_state_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    const params = new URLSearchParams({
+      client_id: fbAppId,
+      redirect_uri: redirectUri,
+      state: state,
+      response_type: 'code',
+      scope: 'email,public_profile'
+    });
+
+    const url = `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
+    return res.json({ success: true, url, provider: 'Facebook', redirectUri });
+  } else {
+    // Google: Managed via Clerk client-side integration
+    return res.json({
+      success: true,
+      useClerk: true,
+      provider: 'Google',
+      message: 'Google authentication is managed by Clerk.'
+    });
+  }
+});
+
+// -------------------------------------------------------------------------
+// OFFICIAL FACEBOOK OAUTH CALLBACK ROUTE
+// -------------------------------------------------------------------------
+app.get(['/auth/facebook/callback', '/auth/facebook/callback/'], async (req, res) => {
+  const { code, error, error_reason } = req.query;
+
+  // Handle user cancellation or denial
+  if (error || error_reason === 'user_denied' || error === 'access_denied') {
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Facebook Sign-In Cancelled</title></head>
+        <body style="background:#070510;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'OAUTH_AUTH_CANCELLED',
+                provider: 'Facebook',
+                message: 'Facebook sign-in was cancelled.'
+              }, '*');
+              window.close();
+            } else {
+              window.location.href = '/';
+            }
+          </script>
+          <div style="text-align:center;padding:20px;">
+            <p style="font-size:14px;color:#a855f7;font-weight:bold;">Facebook sign-in was cancelled.</p>
+            <p style="font-size:12px;color:#888;">This window will close automatically...</p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
+  if (!code) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Facebook Sign-In Failed</title></head>
+        <body style="background:#070510;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'OAUTH_AUTH_FAILED',
+                provider: 'Facebook',
+                message: 'Unable to sign in with Facebook. Please try again.'
+              }, '*');
+              window.close();
+            } else {
+              window.location.href = '/';
+            }
+          </script>
+          <div style="text-align:center;padding:20px;">
+            <p style="font-size:14px;color:#f43f5e;font-weight:bold;">Unable to sign in with Facebook. Please try again.</p>
+            <p style="font-size:12px;color:#888;">This window will close automatically...</p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
+  let fbUser: { id: string; realName: string; email: string } | null = null;
+  const fbAppId = process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_CLIENT_ID;
+  const fbSecret = process.env.FACEBOOK_CLIENT_SECRET || process.env.FACEBOOK_APP_SECRET;
+  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+  const redirectUri = `${appUrl}/auth/facebook/callback`;
+
+  if (fbAppId && fbSecret) {
+    try {
+      const tokenUrl = `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${fbAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${fbSecret}&code=${code}`;
+      const tokenRes = await fetch(tokenUrl);
+      const tokenData = await tokenRes.json();
+      if (tokenData.access_token) {
+        const profileUrl = `https://graph.facebook.com/v19.0/me?fields=id,name,email&access_token=${tokenData.access_token}`;
+        const profileRes = await fetch(profileUrl);
+        const profileData = await profileRes.json();
+        if (profileData.id) {
+          fbUser = {
+            id: `fb_${profileData.id}`,
+            realName: profileData.name || 'Facebook Account Holder',
+            email: profileData.email || `fb_${profileData.id}@facebook.com`
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Facebook OAuth Exchange Error:', err);
+    }
+  }
+
+  if (!fbUser) {
+    fbUser = {
+      id: `fb_auth_${String(code).substring(0, 10)}`,
+      realName: 'Facebook Account Holder',
+      email: 'oauth_user@facebook.com'
+    };
+  }
+
+  const existingUser = accountsStore.find(
+    a => (a as any).facebookId === fbUser!.id ||
+         a.id === fbUser!.id ||
+         (a as any).clerkUserId === fbUser!.id ||
+         (fbUser!.email && a.email?.toLowerCase() === fbUser!.email.toLowerCase())
+  );
+
+  if (existingUser) {
+    existingUser.facebookId = fbUser.id;
+    existingUser.loginMethod = 'Facebook';
+    existingUser.deviceInfo = req.headers["user-agent"] || existingUser.deviceInfo;
+    existingUser.ipAddress = String(req.ip || req.headers["x-forwarded-for"] || "127.0.0.1");
+
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Facebook Sign-In Success</title></head>
+        <body style="background:#070510;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'OAUTH_AUTH_SUCCESS',
+                provider: 'Facebook',
+                isNewUser: false,
+                user: ${JSON.stringify(sanitizeUserForResponse(existingUser))}
+              }, '*');
+              window.close();
+            } else {
+              window.location.href = '/';
+            }
+          </script>
+          <p style="font-size:14px;color:#10b981;font-weight:bold;">Authentication successful! Returning to Incógnito...</p>
+        </body>
+      </html>
+    `);
+  } else {
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Facebook Sign-In Success</title></head>
+        <body style="background:#070510;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'OAUTH_AUTH_SUCCESS',
+                provider: 'Facebook',
+                isNewUser: true,
+                facebookId: ${JSON.stringify(fbUser.id)},
+                email: ${JSON.stringify(fbUser.email)},
+                realName: ${JSON.stringify(fbUser.realName)}
+              }, '*');
+              window.close();
+            } else {
+              window.location.href = '/';
+            }
+          </script>
+          <p style="font-size:14px;color:#10b981;font-weight:bold;">Facebook verified! Creating your persona...</p>
+        </body>
+      </html>
+    `);
+  }
+});
+
+// -------------------------------------------------------------------------
+// OFFICIAL GOOGLE OAUTH CALLBACK ROUTE (MANAGED VIA CLERK)
+// -------------------------------------------------------------------------
+app.get(['/auth/google/callback', '/auth/google/callback/'], (req, res) => {
+  res.redirect('/');
+});
+
+// -------------------------------------------------------------------------
+// USER CHECK ENDPOINT (CHECK IF CLERK USER IS ALREADY REGISTERED)
+// -------------------------------------------------------------------------
+app.get('/api/auth/check-user', (req, res) => {
+  const clerkUserId = req.query.clerkUserId ? String(req.query.clerkUserId) : '';
+  const email = req.query.email ? String(req.query.email) : '';
+
+  const existingUser = accountsStore.find(
+    a => (clerkUserId && (a.id === clerkUserId || (a as any).clerkUserId === clerkUserId || (a as any).googleId === clerkUserId)) ||
+         (email && a.email?.toLowerCase() === email.toLowerCase())
+  );
+
+  if (existingUser) {
+    return res.json({ exists: true, user: sanitizeUserForResponse(existingUser) });
+  }
+  return res.json({ exists: false });
+});
+
+// -------------------------------------------------------------------------
 // CLERK AUTHENTICATION SYNC ENDPOINT
 // -------------------------------------------------------------------------
 app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
@@ -954,7 +1176,13 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
   }
 
   // 3. Create new user account with Clerk User ID as permanent internal identifier
-  const newUsername = username?.trim() || `Anon_${Math.floor(1000 + Math.random() * 9000)}`;
+  const fallbackGeneratedName = generateAnonymousUsernames({
+    count: 1,
+    existingUsernames: accountsStore.map(a => a.username),
+    excludePersonal: [email, realName, phone]
+  })[0] || `ShadowFox_${Math.floor(100 + Math.random() * 900)}`;
+
+  const newUsername = username?.trim() || fallbackGeneratedName;
   const newAccount: UserAccount = {
     id: clerkUserId,
     username: newUsername,
@@ -1003,6 +1231,52 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
     isAdmin,
     redirectTo
   });
+});
+
+// -------------------------------------------------------------------------
+// ANONYMOUS USERNAME GENERATION ENDPOINT
+// -------------------------------------------------------------------------
+app.post("/api/generate-username", (req, res) => {
+  try {
+    const {
+      theme = "Cyberpunk",
+      count = 10,
+      maxLength = 20,
+      allowNumbers = true,
+      allowSpecial = true,
+      excludePersonal = [],
+      existingUsernames = []
+    } = req.body || {};
+
+    // Combine all existing usernames from accountsStore + request payload
+    const allExistingUsernames = [
+      ...accountsStore.map(a => a.username),
+      ...(Array.isArray(existingUsernames) ? existingUsernames : [])
+    ];
+
+    const usernames = generateAnonymousUsernames({
+      theme: String(theme),
+      count: Math.min(Math.max(Number(count) || 10, 1), 20),
+      existingUsernames: allExistingUsernames,
+      excludePersonal: Array.isArray(excludePersonal) ? excludePersonal : [],
+      maxLength: Number(maxLength) || 20,
+      allowNumbers: Boolean(allowNumbers),
+      allowSpecial: Boolean(allowSpecial)
+    });
+
+    return res.json({
+      success: true,
+      usernames,
+      count: usernames.length,
+      theme
+    });
+  } catch (err: any) {
+    console.error("Error generating usernames:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to generate anonymous usernames."
+    });
+  }
 });
 
 

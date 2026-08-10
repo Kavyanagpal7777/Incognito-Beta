@@ -332,12 +332,12 @@ export const COMMUNITIES = [
   { id: 'Trending', name: '🔥 Trending', icon: 'Flame', count: '35.9k' }
 ];
 
+import { generateAnonymousUsernames } from '../utils/usernameGenerator';
+
 export function generateUsernameSuggestions(username: string): string[] {
-  const clean = username.replace(/[^a-zA-Z0-9_.]/g, '') || 'ShadowNova';
-  return [
-    `${clean}_01`,
-    `${clean}2026`,
-    `${clean}.`,
-    `${clean}_Nova`
-  ];
+  // IGNORE input PII/real name and generate completely random anonymous suggestions
+  return generateAnonymousUsernames({
+    count: 10,
+    excludePersonal: [username],
+  });
 }

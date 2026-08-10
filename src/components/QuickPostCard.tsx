@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Image as ImageIcon, 
@@ -19,23 +19,39 @@ import {
   Loader2, 
   Hash, 
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  FileText,
+  Bookmark,
+  Trash2,
+  FolderKanban
 } from 'lucide-react';
 import { UserAccount, Post, PostPoll } from '../types';
 import { COMMUNITIES } from '../data/mockData';
+
+export interface PostDraft {
+  id: string;
+  title: string;
+  content: string;
+  community: string;
+  imageUrl?: string;
+  tags: string[];
+  updatedAt: number;
+}
 
 interface QuickPostCardProps {
   currentUser: UserAccount;
   onPostCreated: (post: Post) => void;
   onTriggerToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   isGlobalAnonymousMode?: boolean;
+  onCloseModal?: () => void;
 }
 
 export default function QuickPostCard({
   currentUser,
   onPostCreated,
   onTriggerToast,
-  isGlobalAnonymousMode = false
+  isGlobalAnonymousMode = false,
+  onCloseModal
 }: QuickPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [postTitle, setPostTitle] = useState('');
@@ -46,6 +62,11 @@ export default function QuickPostCard({
   const [postTag, setPostTag] = useState('');
   const [tags, setTags] = useState<string[]>(['PrivacyFirst']);
   
+  // Drafts state
+  const [drafts, setDrafts] = useState<PostDraft[]>([]);
+  const [showDraftsList, setShowDraftsList] = useState(false);
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+
   // Poll state
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [pollOptions, setPollOptions] = useState<string[]>(['Option 1', 'Option 2']);
@@ -55,6 +76,85 @@ export default function QuickPostCard({
 
   // AI Assist loading state
   const [isAiGenerating, setIsAiGenerating] = useState(false);
+
+  // Load saved drafts on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('incognito_drafts');
+      if (saved) {
+        setDrafts(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // Save drafts to localStorage
+  const saveDraftsToStorage = (updatedDrafts: PostDraft[]) => {
+    setDrafts(updatedDrafts);
+    localStorage.setItem('incognito_drafts', JSON.stringify(updatedDrafts));
+  };
+
+  // Handle Save Draft
+  const handleSaveDraft = () => {
+    if (!postContent.trim() && !postTitle.trim()) {
+      onTriggerToast('Write a title or body content to save a draft.', 'info');
+      return;
+    }
+
+    const draftId = activeDraftId || `draft_${Date.now()}`;
+    const newDraft: PostDraft = {
+      id: draftId,
+      title: postTitle.trim(),
+      content: postContent.trim(),
+      community: selectedCommunity,
+      imageUrl: postImageUrl.trim() || undefined,
+      tags,
+      updatedAt: Date.now()
+    };
+
+    const existingIndex = drafts.findIndex(d => d.id === draftId);
+    let updated: PostDraft[];
+    if (existingIndex >= 0) {
+      updated = [...drafts];
+      updated[existingIndex] = newDraft;
+    } else {
+      updated = [newDraft, ...drafts];
+    }
+
+    saveDraftsToStorage(updated);
+    setActiveDraftId(draftId);
+    onTriggerToast('📝 Broadcast draft saved securely!', 'success');
+  };
+
+  // Restore Draft
+  const handleRestoreDraft = (draft: PostDraft) => {
+    setPostTitle(draft.title || '');
+    setPostContent(draft.content || '');
+    setSelectedCommunity(draft.community || '😂 Funny');
+    if (draft.imageUrl) {
+      setPostImageUrl(draft.imageUrl);
+      setShowImageInput(true);
+    }
+    if (draft.tags && draft.tags.length > 0) {
+      setTags(draft.tags);
+    }
+    setActiveDraftId(draft.id);
+    setIsExpanded(true);
+    setShowDraftsList(false);
+    onTriggerToast(`Restored draft "${draft.title || 'Untitled'}" into editor.`, 'info');
+  };
+
+  // Delete Draft
+  const handleDeleteDraft = (draftId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = drafts.filter(d => d.id !== draftId);
+    saveDraftsToStorage(updated);
+    if (activeDraftId === draftId) {
+      setActiveDraftId(null);
+    }
+    onTriggerToast('Draft removed.', 'info');
+  };
 
   // Handle Tag addition
   const handleAddTag = () => {
@@ -161,6 +261,13 @@ export default function QuickPostCard({
 
     onPostCreated(newPost);
 
+    // Remove from active draft if previously saved as draft
+    if (activeDraftId) {
+      const updatedDrafts = drafts.filter(d => d.id !== activeDraftId);
+      saveDraftsToStorage(updatedDrafts);
+      setActiveDraftId(null);
+    }
+
     // Reset Form
     setPostTitle('');
     setPostContent('');
@@ -169,6 +276,10 @@ export default function QuickPostCard({
     setShowPollCreator(false);
     setIsExpanded(false);
     onTriggerToast('Broadcast published safely to the network!', 'success');
+
+    if (onCloseModal) {
+      onCloseModal();
+    }
   };
 
   return (
@@ -402,7 +513,80 @@ export default function QuickPostCard({
           </div>
         )}
 
-        {/* ACTION BAR: QUICK ACTION BUTTONS + ANONYMOUS TOGGLE + POST BUTTON */}
+        {/* DRAFTS LIST PANEL */}
+        <AnimatePresence>
+          {showDraftsList && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="p-3.5 rounded-2xl bg-black/50 border border-violet-500/30 space-y-2 text-left"
+            >
+              <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                <span className="text-[11px] font-bold text-violet-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <FolderKanban className="w-3.5 h-3.5 text-violet-400" />
+                  Saved Drafts ({drafts.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowDraftsList(false)}
+                  className="text-white/40 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {drafts.length === 0 ? (
+                <p className="text-[11px] text-white/40 py-2 text-center italic">
+                  No saved drafts yet. Type a post and click "Save Draft"!
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                  {drafts.map((d) => (
+                    <div
+                      key={d.id}
+                      onClick={() => handleRestoreDraft(d)}
+                      className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-violet-600/15 border border-white/10 hover:border-violet-500/40 transition-all cursor-pointer flex items-center justify-between gap-2 group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white truncate">
+                            {d.title || d.content.substring(0, 30) || 'Untitled Draft'}
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                            {d.community}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/50 truncate mt-0.5">
+                          {d.content || 'Empty body'}
+                        </p>
+                        <span className="text-[8.5px] text-white/30 font-mono">
+                          {new Date(d.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-violet-400 group-hover:underline">
+                          Restore
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteDraft(d.id, e)}
+                          className="p-1 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          title="Delete draft"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ACTION BAR: QUICK ACTION BUTTONS + ANONYMOUS TOGGLE + DRAFT & POST BUTTONS */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/10">
           
           {/* QUICK ACTION BUTTONS */}
@@ -479,10 +663,27 @@ export default function QuickPostCard({
               <span>AI Assist</span>
             </motion.button>
 
+            {/* 📁 VIEW DRAFTS */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowDraftsList(!showDraftsList)}
+              className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                showDraftsList
+                  ? 'bg-amber-500/20 border-amber-400/50 text-amber-200 shadow-sm'
+                  : 'bg-white/[0.02] hover:bg-white/[0.08] border-white/10 text-white/70 hover:text-white'
+              }`}
+              title="View saved drafts"
+            >
+              <FolderKanban className="w-3.5 h-3.5 text-amber-400" />
+              <span>Drafts ({drafts.length})</span>
+            </motion.button>
+
           </div>
 
-          {/* ANONYMOUS TOGGLE & SUBMIT POST BUTTON */}
-          <div className="flex items-center gap-3">
+          {/* ANONYMOUS TOGGLE & SAVE DRAFT / POST BUTTONS */}
+          <div className="flex items-center gap-2 sm:gap-3">
             
             {/* Anonymous Toggle */}
             <label className="flex items-center gap-1.5 cursor-pointer select-none">
@@ -497,6 +698,19 @@ export default function QuickPostCard({
                 <span className="hidden md:inline">Ghost Mode</span>
               </span>
             </label>
+
+            {/* Save Draft Button */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleSaveDraft}
+              className="px-3 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-white/80 hover:text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+              id="save-draft-btn"
+            >
+              <Bookmark className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">Save Draft</span>
+            </motion.button>
 
             {/* Post Button */}
             <motion.button

@@ -54,7 +54,9 @@ import InteractiveAtmosphere from './components/InteractiveAtmosphere';
 import UserProfileModal from './components/UserProfileModal';
 import AdminGovernancePanel from './components/AdminGovernancePanel';
 import WelcomeLegalGateway from './components/WelcomeLegalGateway';
+import FloatingPostButton from './components/FloatingPostButton';
 import { Home, Trophy, PlusCircle, MessageSquare, Menu, X as CloseIcon } from 'lucide-react';
+import { useSignIn, useSignUp, useUser, useClerk, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const CURRENT_POLICY_VERSION = "1.0";
 
@@ -135,7 +137,124 @@ export default function App() {
     platform: 'Google' | 'Facebook';
     email: string;
     realName: string;
+    providerId?: string;
   } | null>(null);
+
+  const oauthActiveRef = useRef<boolean>(false);
+
+  // CLERK HOOKS & SESSION SYNC
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
+  const { user: clerkUser, isLoaded: isClerkUserLoaded, isSignedIn: isClerkSignedIn } = useUser();
+  const clerk = useClerk();
+
+  const syncedClerkIdRef = useRef<string | null>(null);
+
+  // Automatic Clerk Session Sync (Google / Social OAuth Return)
+  useEffect(() => {
+    if (!isClerkUserLoaded || !isClerkSignedIn || !clerkUser) return;
+    if (syncedClerkIdRef.current === clerkUser.id && isAuthenticated) return;
+
+    const syncClerkSession = async () => {
+      syncedClerkIdRef.current = clerkUser.id;
+      try {
+        const email = clerkUser.primaryEmailAddress?.emailAddress || '';
+        const clerkUserId = clerkUser.id;
+
+        // Check if account already exists in Incógnito backend
+        const checkRes = await fetch(`/api/auth/check-user?clerkUserId=${encodeURIComponent(clerkUserId)}&email=${encodeURIComponent(email)}`);
+        const checkData = await checkRes.json();
+
+        if (checkData.exists && checkData.user) {
+          // LOGIN BEHAVIOR: Account exists -> Log directly into existing account & redirect to Home Feed
+          const existingAccount: UserAccount = checkData.user;
+          setCurrentUser(existingAccount);
+          setIsAuthenticated(true);
+          localStorage.setItem('incognito_current_user', JSON.stringify(existingAccount));
+
+          if (existingAccount.role === 'super_admin' || existingAccount.role === 'owner' || existingAccount.role === 'admin') {
+            setSidebarTab('admin');
+            window.location.hash = '#/admin';
+          } else {
+            setSidebarTab('home');
+            window.location.hash = '#/home';
+          }
+          triggerToast(`Welcome back, @${existingAccount.username}!`, 'success');
+        } else {
+          // SIGN-UP BEHAVIOR: Google auth succeeded for new account -> Open "CREATE YOUR PUBLIC PERSONA" modal
+          setOauthStep({
+            isOpen: true,
+            platform: 'Google',
+            email: email || `user_${clerkUserId.substring(0, 8)}@gmail.com`,
+            realName: clerkUser.fullName || clerkUser.firstName || 'Google Account Holder',
+            providerId: clerkUserId
+          });
+        }
+      } catch (err) {
+        console.error('Clerk Session Sync Error:', err);
+        triggerToast('Google sign-in could not be completed. Please try again.', 'error');
+      }
+    };
+
+    syncClerkSession();
+  }, [isClerkUserLoaded, isClerkSignedIn, clerkUser, isAuthenticated]);
+
+  // LISTEN FOR OAUTH POPUP CALLBACK MESSAGES
+  useEffect(() => {
+    const handleOAuthMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+
+      if (data.type === 'OAUTH_AUTH_CANCELLED') {
+        oauthActiveRef.current = true;
+        setIsSubmitting(false);
+        const msg = data.provider === 'Facebook'
+          ? 'Facebook sign-in was cancelled.'
+          : 'Google sign-in was cancelled.';
+        triggerToast(msg, 'info');
+      } else if (data.type === 'OAUTH_AUTH_FAILED') {
+        oauthActiveRef.current = true;
+        setIsSubmitting(false);
+        const msg = data.provider === 'Facebook'
+          ? 'Unable to sign in with Facebook. Please try again.'
+          : 'Unable to sign in with Google. Please try again.';
+        triggerToast(msg, 'error');
+      } else if (data.type === 'OAUTH_AUTH_SUCCESS') {
+        oauthActiveRef.current = true;
+        setIsSubmitting(false);
+
+        if (data.isNewUser) {
+          // New account -> Show Public Persona creation screen
+          setOauthStep({
+            isOpen: true,
+            platform: data.provider || 'Facebook',
+            email: data.email || (data.provider === 'Facebook' ? 'oauth_user@facebook.com' : 'oauth_user@google.com'),
+            realName: data.realName || `${data.provider} Account Holder`,
+            providerId: data.facebookId || data.googleId
+          });
+        } else if (data.user) {
+          // Existing linked account -> Log directly into existing Incógnito account & redirect to home feed
+          const existingAccount: UserAccount = data.user;
+          setCurrentUser(existingAccount);
+          setIsAuthenticated(true);
+          localStorage.setItem('incognito_current_user', JSON.stringify(existingAccount));
+
+          if (existingAccount.role === 'super_admin' || existingAccount.role === 'owner' || existingAccount.role === 'admin') {
+            setSidebarTab('admin');
+            window.location.hash = '#/admin';
+            triggerToast(`Welcome back, Administrator @${existingAccount.username}!`, 'success');
+          } else {
+            setSidebarTab('home');
+            window.location.hash = '#/home';
+            triggerToast(`Welcome back, @${existingAccount.username}!`, 'success');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, []);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -487,14 +606,75 @@ export default function App() {
     }
   };
 
-  // SOCIAL AUTHENTICATION HANDLER (GOOGLE & FACEBOOK OAUTH VIA CLERK)
-  const handleSocialAuthTrigger = (platform: 'Google' | 'Facebook') => {
-    setOauthStep({
-      isOpen: true,
-      platform,
-      email: platform === 'Google' ? 'oauth_user@google.com' : 'oauth_user@facebook.com',
-      realName: `${platform} Account Holder`
-    });
+  // SOCIAL AUTHENTICATION HANDLER (OFFICIAL CLERK GOOGLE & FACEBOOK OAUTH)
+  const handleSocialAuthTrigger = async (platform: 'Google' | 'Facebook') => {
+    setIsSubmitting(true);
+    setSubmitMessage(`Redirecting to official ${platform} OAuth authorization via Clerk...`);
+
+    const redirectUrl = `${window.location.origin}/sso-callback`;
+    const redirectUrlComplete = `${window.location.origin}/`;
+
+    try {
+      if (platform === 'Google') {
+        const strategy = 'oauth_google';
+        if (signIn) {
+          await signIn.authenticateWithRedirect({
+            strategy,
+            redirectUrl,
+            redirectUrlComplete,
+          });
+        } else if (signUp) {
+          await signUp.authenticateWithRedirect({
+            strategy,
+            redirectUrl,
+            redirectUrlComplete,
+          });
+        } else if (clerk && (clerk as any).authenticateWithRedirect) {
+          await (clerk as any).authenticateWithRedirect({
+            strategy,
+            redirectUrl,
+            redirectUrlComplete,
+          });
+        } else {
+          setIsSubmitting(false);
+          triggerToast('Google sign-in could not be completed. Please try again.', 'error');
+        }
+        return;
+      }
+
+      if (platform === 'Facebook') {
+        const strategy = 'oauth_facebook';
+        if (signIn) {
+          await signIn.authenticateWithRedirect({
+            strategy,
+            redirectUrl,
+            redirectUrlComplete,
+          });
+        } else if (signUp) {
+          await signUp.authenticateWithRedirect({
+            strategy,
+            redirectUrl,
+            redirectUrlComplete,
+          });
+        } else if (clerk && (clerk as any).authenticateWithRedirect) {
+          await (clerk as any).authenticateWithRedirect({
+            strategy,
+            redirectUrl,
+            redirectUrlComplete,
+          });
+        } else {
+          // Fallback Facebook window if needed
+          const res = await fetch(`/api/auth/oauth-url?provider=Facebook`);
+          const data = await res.json();
+          if (data.url) window.open(data.url, 'facebook_popup', 'width=600,height=700');
+        }
+        return;
+      }
+    } catch (err: any) {
+      console.error(`${platform} OAuth Error:`, err);
+      setIsSubmitting(false);
+      triggerToast('Google sign-in could not be completed. Please try again.', 'error');
+    }
   };
 
   // Complete social registration after picking Username
@@ -502,10 +682,10 @@ export default function App() {
     if (!oauthStep) return;
 
     setIsSubmitting(true);
-    setSubmitMessage('Finalizing your Clerk OAuth profile...');
+    setSubmitMessage('Finalizing your secure Incógnito profile...');
 
     try {
-      const clerkOauthId = `clk_oauth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      const clerkOauthId = oauthStep.providerId || `clk_oauth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
       const response = await fetch('/api/auth/clerk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -514,7 +694,9 @@ export default function App() {
           username,
           email: oauthStep.email,
           realName: oauthStep.realName,
-          loginMethod: oauthStep.platform
+          loginMethod: oauthStep.platform,
+          facebookId: oauthStep.platform === 'Facebook' ? clerkOauthId : undefined,
+          googleId: oauthStep.platform === 'Google' ? clerkOauthId : undefined
         })
       });
 
@@ -532,16 +714,18 @@ export default function App() {
         if (data.redirectTo === '/admin') {
           setSidebarTab('admin');
           window.location.hash = '#/admin';
-          triggerToast(`Clerk OAuth Admin verified! Governance Panel unlocked.`, 'success');
+          triggerToast(`OAuth Admin verified! Governance Panel unlocked.`, 'success');
         } else {
           setSidebarTab('home');
           window.location.hash = '#/home';
-          triggerToast('Registration finalized! Welcome to the secure grid.', 'success');
+          triggerToast('Registration finalized! Welcome to Incógnito.', 'success');
         }
+      } else {
+        triggerToast(data.error || 'Unable to complete registration.', 'error');
       }
     } catch (err) {
       setIsSubmitting(false);
-      triggerToast('OAuth setup failed.', 'error');
+      triggerToast('Registration error occurred. Please try again.', 'error');
     }
   };
 
@@ -604,6 +788,20 @@ export default function App() {
       });
     };
   }, [isAuthenticated, currentUser?.autoLogoutTimeout]);
+
+  // Handle Clerk SSO Callback Redirect
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/sso-callback')) {
+    return (
+      <div className="fixed inset-0 bg-[#070510] text-white flex flex-col items-center justify-center p-6 z-[9999]">
+        <div className="p-4 rounded-2xl bg-violet-600/20 border border-violet-500/30 mb-4 animate-bounce">
+          <Sparkles className="w-8 h-8 text-violet-300" />
+        </div>
+        <h2 className="text-lg font-bold text-white mb-1">Authenticating with Google via Clerk...</h2>
+        <p className="text-xs text-white/50 mb-4">Please wait while your identity is verified securely.</p>
+        <AuthenticateWithRedirectCallback signUpForceRedirectUrl="/" signInForceRedirectUrl="/" />
+      </div>
+    );
+  }
 
   return (
     <InteractiveAtmosphere onMouseMoveCoords={setMouseCoords}>
@@ -1608,6 +1806,26 @@ export default function App() {
                   }}
                 />
               )}
+
+              {/* OAUTH USERNAME SELECTION MODAL */}
+              {oauthStep && oauthStep.isOpen && (
+                <OAuthUsernameModal
+                  platform={oauthStep.platform}
+                  email={oauthStep.email}
+                  realName={oauthStep.realName}
+                  existingUsernames={accounts.map(a => a.username)}
+                  onCancel={() => setOauthStep(null)}
+                  onComplete={(selectedUsername) => handleOauthUsernameComplete(selectedUsername)}
+                />
+              )}
+
+              {/* FLOATING ACTION BUTTON FOR POSTING AND DRAFTING */}
+              <FloatingPostButton
+                currentUser={currentUser!}
+                onPostCreated={(newPost) => setPosts(prev => [newPost, ...prev])}
+                onTriggerToast={triggerToast}
+                isAnonymousMode={isAnonymousMode}
+              />
 
             </div>
           </motion.div>

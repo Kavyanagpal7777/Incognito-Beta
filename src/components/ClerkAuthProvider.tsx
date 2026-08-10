@@ -4,7 +4,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 const PUBLISHABLE_KEY = 
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) ||
   (typeof process !== 'undefined' && process.env && process.env.CLERK_PUBLISHABLE_KEY) ||
-  '';
+  'pk_test_dG9sZXJhbnQtd29tYmF0LTUzLmNsZXJrLmFjY291bnRzLmRldiQ';
 
 interface ClerkAuthProviderProps {
   children: React.ReactNode;
