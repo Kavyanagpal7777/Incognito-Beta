@@ -915,6 +915,7 @@ app.get('/api/auth/check-user', (req, res) => {
 // AUTHENTICATION SYNC ENDPOINT
 // -------------------------------------------------------------------------
 app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
   try {
     const {
       userId: rawUserId,
@@ -925,110 +926,124 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
       loginMethod = 'Email',
       realName,
       password
-    } = req.body;
+    } = req.body || {};
 
     const targetUserId = rawUserId || (email ? `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
 
     if (!targetUserId) {
-      return res.status(400).json({ success: false, error: "Missing User ID" });
-    }
-
-    // 1. Check if account already exists by username, email, or phone
-    let existingUser = accountsStore.find(
-      a => (username && a.username.toLowerCase() === username.trim().toLowerCase()) ||
-           (email && a.email?.toLowerCase() === email.trim().toLowerCase()) ||
-           (phone && a.phone === phone)
-    );
-
-    if (existingUser) {
-      let duplicateError = "Account already exists.";
-      if (email && existingUser.email?.toLowerCase() === email.trim().toLowerCase()) {
-        duplicateError = "An account with this email address already exists. Please log in.";
-      } else if (phone && existingUser.phone === phone) {
-        duplicateError = "An account with this mobile number already exists. Please log in.";
-      } else if (username && existingUser.username.toLowerCase() === username.trim().toLowerCase()) {
-        duplicateError = "This handle is already taken. Please choose another username.";
-      }
-
       return res.status(400).json({
         success: false,
-        error: duplicateError
+        error: "MISSING_USER_ID",
+        message: "Missing User ID for registration."
       });
     }
 
-  // 2. Assign default role (check super_admin email rule)
-  let assignedRole: 'owner' | 'super_admin' | 'admin' | 'moderator' | 'user' = 'user';
-  if (email && email.toLowerCase() === 'kavyanagpal0005@gmail.com') {
-    assignedRole = 'super_admin';
-  }
+    // 1. Check if account already exists by username, email, or phone
+    const cleanUsername = username?.trim();
+    const cleanEmail = email?.trim();
+    const cleanPhone = phone?.replace(/\s+/g, '');
 
-  // 3. Generate salt and passwordHash if password was supplied
-  const salt = `salt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-  const passwordHash = password ? hashPassword(password, salt) : undefined;
+    let existingUser = accountsStore.find(
+      a => (cleanUsername && a.username.toLowerCase() === cleanUsername.toLowerCase()) ||
+           (cleanEmail && a.email?.toLowerCase() === cleanEmail.toLowerCase()) ||
+           (cleanPhone && a.phone === cleanPhone)
+    );
 
-  // 4. Create new user account
-  const fallbackGeneratedName = generateAnonymousUsernames({
-    count: 1,
-    existingUsernames: accountsStore.map(a => a.username),
-    excludePersonal: [email, realName, phone]
-  })[0] || `ShadowFox_${Math.floor(100 + Math.random() * 900)}`;
+    if (existingUser) {
+      let errorCode = "DUPLICATE_ACCOUNT";
+      let errorMessage = "Account already exists.";
+      if (cleanEmail && existingUser.email?.toLowerCase() === cleanEmail.toLowerCase()) {
+        errorCode = "DUPLICATE_EMAIL";
+        errorMessage = "An account with this email address already exists. Please log in.";
+      } else if (cleanPhone && existingUser.phone === cleanPhone) {
+        errorCode = "DUPLICATE_PHONE";
+        errorMessage = "An account with this mobile number already exists. Please log in.";
+      } else if (cleanUsername && existingUser.username.toLowerCase() === cleanUsername.toLowerCase()) {
+        errorCode = "DUPLICATE_USERNAME";
+        errorMessage = "This handle is already taken. Please choose another username.";
+      }
 
-  const newUsername = username?.trim() || fallbackGeneratedName;
-  const newAccount: UserAccount = {
-    id: targetUserId,
-    username: newUsername,
-    realName: realName?.trim() || 'Anonymous Vault Member',
-    email: email || undefined,
-    phone: phone || undefined,
-    password: password || undefined,
-    salt,
-    passwordHash,
-    avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-    bio: 'Incognito privacy-first network node.',
-    karma: 25,
-    joinDate: 'Jul 2026',
-    badges: ['Verified', 'Privacy Vault'],
-    loginMethod: loginMethod as any,
-    deviceInfo: req.headers["user-agent"] || "Browser Client",
-    ipAddress: String(req.ip || req.headers["x-forwarded-for"] || "127.0.0.1"),
-    role: assignedRole,
-    twoFactorEnabled: false
-  };
+      return res.status(409).json({
+        success: false,
+        error: errorCode,
+        message: errorMessage
+      });
+    }
 
-  accountsStore.unshift(newAccount);
+    // 2. Assign default role (check super_admin email rule)
+    let assignedRole: 'owner' | 'super_admin' | 'admin' | 'moderator' | 'user' = 'user';
+    if (cleanEmail && cleanEmail.toLowerCase() === 'kavyanagpal0005@gmail.com') {
+      assignedRole = 'super_admin';
+    }
 
-  const isAdmin = assignedRole === 'super_admin' || email?.toLowerCase() === 'kavyanagpal0005@gmail.com';
-  const redirectTo = isAdmin ? "/admin" : "/home";
+    // 3. Generate salt and passwordHash if password was supplied
+    const salt = `salt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const passwordHash = password ? hashPassword(password, salt) : undefined;
 
-  // Log admin creation audit
-  if (isAdmin) {
-    auditLogsStore.unshift({
-      id: `log_${Date.now().toString(36)}`,
-      actorId: targetUserId,
-      actorUsername: newUsername,
-      role: assignedRole,
-      action: 'Administrator Account Provisioned',
-      targetResource: 'Authentication Gateway',
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      ipAddress: String(req.ip || "127.0.0.1"),
+    // 4. Create new user account
+    const fallbackGeneratedName = generateAnonymousUsernames({
+      count: 1,
+      existingUsernames: accountsStore.map(a => a.username),
+      excludePersonal: [cleanEmail, realName, cleanPhone]
+    })[0] || `ShadowFox_${Math.floor(100 + Math.random() * 900)}`;
+
+    const newUsername = cleanUsername || fallbackGeneratedName;
+    const newAccount: UserAccount = {
+      id: targetUserId,
+      username: newUsername,
+      realName: realName?.trim() || 'Anonymous Vault Member',
+      email: cleanEmail || undefined,
+      phone: cleanPhone || undefined,
+      password: password || undefined,
+      salt,
+      passwordHash,
+      avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+      bio: 'Incognito privacy-first network node.',
+      karma: 25,
+      joinDate: 'Jul 2026',
+      badges: ['Verified', 'Privacy Vault'],
+      loginMethod: loginMethod as any,
       deviceInfo: req.headers["user-agent"] || "Browser Client",
-      details: `Provisioned @${newUsername} as ${assignedRole}.`
-    });
-  }
+      ipAddress: String(req.ip || req.headers["x-forwarded-for"] || "127.0.0.1"),
+      role: assignedRole,
+      twoFactorEnabled: false
+    };
 
-  return res.json({
-    success: true,
-    user: sanitizeUserForResponse(newAccount),
-    userId: targetUserId,
-    role: assignedRole,
-    isAdmin,
-    redirectTo
-  });
+    accountsStore.unshift(newAccount);
+
+    const isAdmin = assignedRole === 'super_admin' || cleanEmail?.toLowerCase() === 'kavyanagpal0005@gmail.com';
+    const redirectTo = isAdmin ? "/admin" : "/home";
+
+    // Log admin creation audit
+    if (isAdmin) {
+      auditLogsStore.unshift({
+        id: `log_${Date.now().toString(36)}`,
+        actorId: targetUserId,
+        actorUsername: newUsername,
+        role: assignedRole,
+        action: 'Administrator Account Provisioned',
+        targetResource: 'Authentication Gateway',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        ipAddress: String(req.ip || "127.0.0.1"),
+        deviceInfo: req.headers["user-agent"] || "Browser Client",
+        details: `Provisioned @${newUsername} as ${assignedRole}.`
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      user: sanitizeUserForResponse(newAccount),
+      userId: targetUserId,
+      role: assignedRole,
+      isAdmin,
+      redirectTo
+    });
   } catch (serverErr: any) {
     console.error('[SERVER_REGISTRATION_ERROR]:', serverErr);
     return res.status(500).json({
       success: false,
-      error: "An error occurred during registration. Please try again."
+      error: "SERVER_ERROR",
+      message: "An error occurred during registration. Please try again."
     });
   }
 });

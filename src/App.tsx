@@ -460,32 +460,44 @@ export default function App() {
             loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
           })
         });
-
-        console.log('[REGISTRATION_RESPONSE]', {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok
-        });
       } catch (networkErr: any) {
-        console.error('[REGISTRATION_ERROR] Network/Fetch Exception:', networkErr);
+        console.error('[REGISTRATION_ERROR] Network Exception:', networkErr);
         setIsSubmitting(false);
         triggerToast('Registration failed: Network connection error.', 'error');
         return;
       }
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonErr: any) {
-        console.error('[REGISTRATION_ERROR] JSON Parse Error:', jsonErr);
-        setIsSubmitting(false);
-        triggerToast('Registration failed: Invalid response from server.', 'error');
-        return;
+      const contentType = response.headers.get('content-type') || '';
+      let data: any = null;
+
+      if (contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          console.error('[REGISTRATION_ERROR] JSON Parse Error:', jsonErr);
+        }
+      } else {
+        const rawText = await response.text();
+        console.error('[REGISTRATION_ERROR] Non-JSON Response Received:', {
+          status: response.status,
+          statusText: response.statusText,
+          bodySnippet: rawText.substring(0, 200)
+        });
+      }
+
+      // Development mode debugging log (no secrets or sensitive data logged)
+      if (import.meta.env.DEV || process.env.NODE_ENV !== 'production') {
+        console.log('REGISTRATION DEBUG', {
+          HTTP_STATUS: response.status,
+          CONTENT_TYPE: contentType,
+          API_ENDPOINT: '/api/auth/sync',
+          SERVER_RESPONSE: data || '[Non-JSON response]'
+        });
       }
 
       setIsSubmitting(false);
 
-      if (data.success && data.user) {
+      if ((response.ok || response.status === 201) && data && data.success && data.user) {
         const newAccount: UserAccount = data.user;
         setCurrentUser(newAccount);
         setIsAuthenticated(true);
@@ -512,7 +524,8 @@ export default function App() {
           triggerToast('Your secure public identity has been forged!', 'success');
         }
       } else {
-        triggerToast(data.error || 'Registration failed. Please try again.', 'error');
+        const errorMessage = data?.message || data?.error || 'Registration failed. Please try again.';
+        triggerToast(errorMessage, 'error');
       }
     } catch (err: any) {
       console.error('[REGISTRATION_ERROR] Unhandled Exception:', err);
