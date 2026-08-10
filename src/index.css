@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Outfit", sans-serif;
+  --font-sans: "Poppins", sans-serif;
+}
+
+/* Custom CSS for background animation and premium visuals of Artistic Flair theme */
+@keyframes float-logo {
+  0%, 100% {
+    transform: translateY(0px) rotate(12deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(16deg);
+  }
+}
+
+@keyframes float-blob-1 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+
+@keyframes float-blob-2 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(-40px, 40px) scale(1.15);
+  }
+}
+
+@keyframes glow-text {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(168, 85, 247, 0.4), 0 0 20px rgba(168, 85, 247, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.7), 0 0 30px rgba(168, 85, 247, 0.4);
+  }
+}
+
+.animated-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #0F0F1A 0%, #181825 100%);
+  z-index: 0;
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  z-index: 1;
+}
+
+.blob-1 {
+  width: 500px;
+  height: 500px;
+  background: #7C3AED;
+  top: -100px;
+  left: -100px;
+}
+
+.blob-2 {
+  width: 400px;
+  height: 400px;
+  background: #A855F7;
+  bottom: -50px;
+  right: 10%;
+}
+
+.animate-float-logo {
+  animation: float-logo 6s ease-in-out infinite;
+}
+
+.animate-float-blob-1 {
+  animation: float-blob-1 15s ease-in-out infinite;
+}
+
+.animate-float-blob-2 {
+  animation: float-blob-2 18s ease-in-out infinite;
+}
+
+.animate-glow-text {
+  animation: glow-text 4s ease-in-out infinite;
+}
+
+/* Glassmorphism custom styling corresponding to glass-card */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-input:focus {
+  border-color: #A855F7;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+  outline: none;
+}
+
+.purple-glow {
+  text-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+  box-shadow: 0 10px 20px -5px rgba(124, 58, 237, 0.5);
+}
+
+.nav-tab-active {
+  border-bottom: 2px solid #A855F7;
+  color: white;
+}
+
+/* Custom Webkit scrollbar for premium aesthetics */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #09090E;
+}
+::-webkit-scrollbar-thumb {
+  background: #251845;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3B2A6B;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "INCOGNITO - Privacy Secured",
+  "description": "INCOGNITO: Privacy. Secured. Anonymous Services - Featuring unique anonymous public identities, real-time AI username generation, simulated OAuth login, and encrypted security vault.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
