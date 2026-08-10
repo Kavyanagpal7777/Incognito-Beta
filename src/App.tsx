@@ -295,13 +295,12 @@ export default function App() {
       setSubmitMessage('Verifying authentication signature...');
 
       try {
-        const response = await fetch('/api/auth/sync', {
+        const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: `usr_${loginEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
             email: loginEmail.trim(),
-            loginMethod: 'Email'
+            password: loginPassword
           })
         });
 
@@ -318,7 +317,7 @@ export default function App() {
             localStorage.setItem('aetheris_current_user', JSON.stringify(userAccount));
           }
 
-          if (data.redirectTo === '/admin') {
+          if (data.redirectTo === '/admin' || userAccount.role === 'super_admin') {
             setSidebarTab('admin');
             window.location.hash = '#/admin';
             triggerToast(`Authenticated: Administrator @${userAccount.username}. Governance Panel unlocked.`, 'success');
@@ -347,13 +346,12 @@ export default function App() {
 
       try {
         const cleanedPhone = loginPhone.replace(/\s+/g, '');
-        const response = await fetch('/api/auth/sync', {
+        const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: `usr_phone_${cleanedPhone}`,
             phone: cleanedPhone,
-            loginMethod: 'Mobile'
+            password: loginPassword
           })
         });
 
@@ -370,7 +368,7 @@ export default function App() {
             localStorage.setItem('aetheris_current_user', JSON.stringify(userAccount));
           }
 
-          if (data.redirectTo === '/admin') {
+          if (data.redirectTo === '/admin' || userAccount.role === 'super_admin') {
             setSidebarTab('admin');
             window.location.hash = '#/admin';
             triggerToast(`Authenticated: Administrator @${userAccount.username}. Governance Panel unlocked.`, 'success');
@@ -393,8 +391,25 @@ export default function App() {
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (signupUsernameStatus !== 'available') {
-      triggerToast('Please enter a valid, unique Username.', 'error');
+    const trimmedUsername = signupUsername.trim();
+    if (!trimmedUsername) {
+      triggerToast('Please enter a username handle.', 'error');
+      return;
+    }
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
+      triggerToast('Username must be 3–20 characters.', 'error');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_.]+$/.test(trimmedUsername)) {
+      triggerToast('Only letters, numbers, underscores (_), and periods (.) allowed in handle.', 'error');
+      return;
+    }
+
+    const isTaken = accounts.some(acc => acc.username.toLowerCase() === trimmedUsername.toLowerCase());
+    if (isTaken) {
+      triggerToast('This handle is already taken. Please choose another username.', 'error');
       return;
     }
 
