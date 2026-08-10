@@ -56,7 +56,6 @@ import AdminGovernancePanel from './components/AdminGovernancePanel';
 import WelcomeLegalGateway from './components/WelcomeLegalGateway';
 import FloatingPostButton from './components/FloatingPostButton';
 import { Home, Trophy, PlusCircle, MessageSquare, Menu, X as CloseIcon } from 'lucide-react';
-import { useSignIn, useSignUp, useUser, useClerk, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const CURRENT_POLICY_VERSION = "1.0";
 
@@ -141,63 +140,6 @@ export default function App() {
   } | null>(null);
 
   const oauthActiveRef = useRef<boolean>(false);
-
-  // CLERK HOOKS & SESSION SYNC
-  const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
-  const { user: clerkUser, isLoaded: isClerkUserLoaded, isSignedIn: isClerkSignedIn } = useUser();
-  const clerk = useClerk();
-
-  const syncedClerkIdRef = useRef<string | null>(null);
-
-  // Automatic Clerk Session Sync (Google / Social OAuth Return)
-  useEffect(() => {
-    if (!isClerkUserLoaded || !isClerkSignedIn || !clerkUser) return;
-    if (syncedClerkIdRef.current === clerkUser.id && isAuthenticated) return;
-
-    const syncClerkSession = async () => {
-      syncedClerkIdRef.current = clerkUser.id;
-      try {
-        const email = clerkUser.primaryEmailAddress?.emailAddress || '';
-        const clerkUserId = clerkUser.id;
-
-        // Check if account already exists in Incógnito backend
-        const checkRes = await fetch(`/api/auth/check-user?clerkUserId=${encodeURIComponent(clerkUserId)}&email=${encodeURIComponent(email)}`);
-        const checkData = await checkRes.json();
-
-        if (checkData.exists && checkData.user) {
-          // LOGIN BEHAVIOR: Account exists -> Log directly into existing account & redirect to Home Feed
-          const existingAccount: UserAccount = checkData.user;
-          setCurrentUser(existingAccount);
-          setIsAuthenticated(true);
-          localStorage.setItem('incognito_current_user', JSON.stringify(existingAccount));
-
-          if (existingAccount.role === 'super_admin' || existingAccount.role === 'owner' || existingAccount.role === 'admin') {
-            setSidebarTab('admin');
-            window.location.hash = '#/admin';
-          } else {
-            setSidebarTab('home');
-            window.location.hash = '#/home';
-          }
-          triggerToast(`Welcome back, @${existingAccount.username}!`, 'success');
-        } else {
-          // SIGN-UP BEHAVIOR: Google auth succeeded for new account -> Open "CREATE YOUR PUBLIC PERSONA" modal
-          setOauthStep({
-            isOpen: true,
-            platform: 'Google',
-            email: email || `user_${clerkUserId.substring(0, 8)}@gmail.com`,
-            realName: clerkUser.fullName || clerkUser.firstName || 'Google Account Holder',
-            providerId: clerkUserId
-          });
-        }
-      } catch (err) {
-        console.error('Clerk Session Sync Error:', err);
-        triggerToast('Google sign-in could not be completed. Please try again.', 'error');
-      }
-    };
-
-    syncClerkSession();
-  }, [isClerkUserLoaded, isClerkSignedIn, clerkUser, isAuthenticated]);
 
   // LISTEN FOR OAUTH POPUP CALLBACK MESSAGES
   useEffect(() => {
@@ -402,9 +344,9 @@ export default function App() {
     setToast({ message, type });
   };
 
-  // --- FORM SUBMIT HANDLERS (CLERK AUTHENTICATION INTEGRATED) ---
+  // --- FORM SUBMIT HANDLERS ---
 
-  // LOGIN PROCESS VIA CLERK
+  // LOGIN PROCESS
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -419,14 +361,14 @@ export default function App() {
       }
 
       setIsSubmitting(true);
-      setSubmitMessage('Verifying Clerk authentication signature...');
+      setSubmitMessage('Verifying authentication signature...');
 
       try {
-        const response = await fetch('/api/auth/clerk-sync', {
+        const response = await fetch('/api/auth/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            clerkUserId: `clk_user_${loginEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            userId: `usr_${loginEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
             email: loginEmail.trim(),
             loginMethod: 'Email'
           })
@@ -448,11 +390,11 @@ export default function App() {
           if (data.redirectTo === '/admin') {
             setSidebarTab('admin');
             window.location.hash = '#/admin';
-            triggerToast(`Clerk Authenticated: Administrator @${userAccount.username}. Governance Panel unlocked.`, 'success');
+            triggerToast(`Authenticated: Administrator @${userAccount.username}. Governance Panel unlocked.`, 'success');
           } else {
             setSidebarTab('home');
             window.location.hash = '#/home';
-            triggerToast(`Clerk Authenticated: Welcome back @${userAccount.username}!`, 'success');
+            triggerToast(`Authenticated: Welcome back @${userAccount.username}!`, 'success');
           }
         } else {
           triggerToast(data.error || 'Invalid Email address or Password.', 'error');
@@ -463,22 +405,22 @@ export default function App() {
       }
 
     } else {
-      // Mobile login verification via Clerk
+      // Mobile login verification
       if (!loginPhone.trim() || !loginPassword) {
         triggerToast('Please enter both mobile number and password.', 'error');
         return;
       }
 
       setIsSubmitting(true);
-      setSubmitMessage('Verifying Clerk mobile authenticator signature...');
+      setSubmitMessage('Verifying mobile authenticator signature...');
 
       try {
         const cleanedPhone = loginPhone.replace(/\s+/g, '');
-        const response = await fetch('/api/auth/clerk-sync', {
+        const response = await fetch('/api/auth/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            clerkUserId: `clk_phone_${cleanedPhone}`,
+            userId: `usr_phone_${cleanedPhone}`,
             phone: cleanedPhone,
             loginMethod: 'Mobile'
           })
@@ -500,11 +442,11 @@ export default function App() {
           if (data.redirectTo === '/admin') {
             setSidebarTab('admin');
             window.location.hash = '#/admin';
-            triggerToast(`Clerk Authenticated: Administrator @${userAccount.username}. Governance Panel unlocked.`, 'success');
+            triggerToast(`Authenticated: Administrator @${userAccount.username}. Governance Panel unlocked.`, 'success');
           } else {
             setSidebarTab('home');
             window.location.hash = '#/home';
-            triggerToast(`Clerk Authenticated: Welcome back @${userAccount.username}!`, 'success');
+            triggerToast(`Authenticated: Welcome back @${userAccount.username}!`, 'success');
           }
         } else {
           triggerToast(data.error || 'Invalid Mobile Number or Password.', 'error');
@@ -516,7 +458,7 @@ export default function App() {
     }
   };
 
-  // REGISTRATION SIGNUP PROCESS VIA CLERK
+  // REGISTRATION SIGNUP PROCESS
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -553,15 +495,15 @@ export default function App() {
     }
 
     setIsSubmitting(true);
-    setSubmitMessage('Provisioning secure Clerk user vault...');
+    setSubmitMessage('Provisioning secure user vault...');
 
     try {
-      const generatedClerkId = `user_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-      const response = await fetch('/api/auth/clerk-sync', {
+      const generatedUserId = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
+      const response = await fetch('/api/auth/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clerkUserId: generatedClerkId,
+          userId: generatedUserId,
           username: signupUsername.trim(),
           realName: signupRealName.trim() || 'Anonymous Vault Member',
           email: signupMode === 'email' ? signupEmail.trim() : undefined,
@@ -591,11 +533,11 @@ export default function App() {
         if (data.redirectTo === '/admin') {
           setSidebarTab('admin');
           window.location.hash = '#/admin';
-          triggerToast('Superadmin Clerk Profile forged! Admin Governance Panel unlocked.', 'success');
+          triggerToast('Superadmin Profile forged! Admin Governance Panel unlocked.', 'success');
         } else {
           setSidebarTab('home');
           window.location.hash = '#/home';
-          triggerToast('Your secure public identity has been forged with Clerk!', 'success');
+          triggerToast('Your secure public identity has been forged!', 'success');
         }
       } else {
         triggerToast(data.error || 'Signup failed.', 'error');
@@ -606,74 +548,45 @@ export default function App() {
     }
   };
 
-  // SOCIAL AUTHENTICATION HANDLER (OFFICIAL CLERK GOOGLE & FACEBOOK OAUTH)
+  // SOCIAL AUTHENTICATION HANDLER
   const handleSocialAuthTrigger = async (platform: 'Google' | 'Facebook') => {
     setIsSubmitting(true);
-    setSubmitMessage(`Redirecting to official ${platform} OAuth authorization via Clerk...`);
-
-    const redirectUrl = `${window.location.origin}/sso-callback`;
-    const redirectUrlComplete = `${window.location.origin}/`;
+    setSubmitMessage(`Initiating ${platform} authentication...`);
 
     try {
       if (platform === 'Google') {
-        const strategy = 'oauth_google';
-        if (signIn) {
-          await signIn.authenticateWithRedirect({
-            strategy,
-            redirectUrl,
-            redirectUrlComplete,
-          });
-        } else if (signUp) {
-          await signUp.authenticateWithRedirect({
-            strategy,
-            redirectUrl,
-            redirectUrlComplete,
-          });
-        } else if (clerk && (clerk as any).authenticateWithRedirect) {
-          await (clerk as any).authenticateWithRedirect({
-            strategy,
-            redirectUrl,
-            redirectUrlComplete,
-          });
-        } else {
-          setIsSubmitting(false);
-          triggerToast('Google sign-in could not be completed. Please try again.', 'error');
-        }
+        setIsSubmitting(false);
+        setOauthStep({
+          isOpen: true,
+          platform: 'Google',
+          email: '',
+          realName: 'Google Account Member',
+          providerId: `usr_google_${Date.now().toString(36)}`
+        });
         return;
       }
 
       if (platform === 'Facebook') {
-        const strategy = 'oauth_facebook';
-        if (signIn) {
-          await signIn.authenticateWithRedirect({
-            strategy,
-            redirectUrl,
-            redirectUrlComplete,
-          });
-        } else if (signUp) {
-          await signUp.authenticateWithRedirect({
-            strategy,
-            redirectUrl,
-            redirectUrlComplete,
-          });
-        } else if (clerk && (clerk as any).authenticateWithRedirect) {
-          await (clerk as any).authenticateWithRedirect({
-            strategy,
-            redirectUrl,
-            redirectUrlComplete,
-          });
+        const res = await fetch(`/api/auth/oauth-url?provider=Facebook`);
+        const data = await res.json();
+        setIsSubmitting(false);
+        if (data.url) {
+          window.open(data.url, 'facebook_popup', 'width=600,height=700');
         } else {
-          // Fallback Facebook window if needed
-          const res = await fetch(`/api/auth/oauth-url?provider=Facebook`);
-          const data = await res.json();
-          if (data.url) window.open(data.url, 'facebook_popup', 'width=600,height=700');
+          setOauthStep({
+            isOpen: true,
+            platform: 'Facebook',
+            email: '',
+            realName: 'Facebook Account Member',
+            providerId: `usr_fb_${Date.now().toString(36)}`
+          });
         }
         return;
       }
     } catch (err: any) {
       console.error(`${platform} OAuth Error:`, err);
       setIsSubmitting(false);
-      triggerToast('Google sign-in could not be completed. Please try again.', 'error');
+      triggerToast(`${platform} sign-in could not be completed. Please try again.`, 'error');
     }
   };
 
@@ -685,18 +598,18 @@ export default function App() {
     setSubmitMessage('Finalizing your secure Incógnito profile...');
 
     try {
-      const clerkOauthId = oauthStep.providerId || `clk_oauth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-      const response = await fetch('/api/auth/clerk-sync', {
+      const oauthId = oauthStep.providerId || `usr_oauth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      const response = await fetch('/api/auth/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clerkUserId: clerkOauthId,
+          userId: oauthId,
           username,
           email: oauthStep.email,
           realName: oauthStep.realName,
           loginMethod: oauthStep.platform,
-          facebookId: oauthStep.platform === 'Facebook' ? clerkOauthId : undefined,
-          googleId: oauthStep.platform === 'Google' ? clerkOauthId : undefined
+          facebookId: oauthStep.platform === 'Facebook' ? oauthId : undefined,
+          googleId: oauthStep.platform === 'Google' ? oauthId : undefined
         })
       });
 
@@ -789,19 +702,6 @@ export default function App() {
     };
   }, [isAuthenticated, currentUser?.autoLogoutTimeout]);
 
-  // Handle Clerk SSO Callback Redirect
-  if (typeof window !== 'undefined' && window.location.pathname.includes('/sso-callback')) {
-    return (
-      <div className="fixed inset-0 bg-[#070510] text-white flex flex-col items-center justify-center p-6 z-[9999]">
-        <div className="p-4 rounded-2xl bg-violet-600/20 border border-violet-500/30 mb-4 animate-bounce">
-          <Sparkles className="w-8 h-8 text-violet-300" />
-        </div>
-        <h2 className="text-lg font-bold text-white mb-1">Authenticating with Google via Clerk...</h2>
-        <p className="text-xs text-white/50 mb-4">Please wait while your identity is verified securely.</p>
-        <AuthenticateWithRedirectCallback signUpForceRedirectUrl="/" signInForceRedirectUrl="/" />
-      </div>
-    );
-  }
 
   return (
     <InteractiveAtmosphere onMouseMoveCoords={setMouseCoords}>
@@ -1799,7 +1699,7 @@ export default function App() {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
-                        'x-clerk-user-id': currentUser.id || 'usr_4'
+                        'x-user-id': currentUser.id || 'usr_4'
                       },
                       body: JSON.stringify({ karma: newKarma })
                     }).catch(err => console.error('Error syncing karma to server:', err));

@@ -31,7 +31,7 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
   const fetchAdminData = async () => {
     setIsLoading(true);
     try {
-      const headers = { 'x-clerk-user-id': currentUser.id || 'usr_4' };
+      const headers = { 'x-user-id': currentUser.id || 'usr_4' };
       const [uRes, rRes, lRes] = await Promise.all([
         fetch('/api/admin/users', { headers }),
         fetch('/api/admin/reports', { headers }),
@@ -66,7 +66,7 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
     try {
       const headers = {
         'Content-Type': 'application/json',
-        'x-clerk-user-id': currentUser.id || 'usr_4'
+        'x-user-id': currentUser.id || 'usr_4'
       };
       const res = await fetch(`/api/admin/users/${userId}/karma`, {
         method: 'POST',
@@ -100,7 +100,7 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
     try {
       const headers = {
         'Content-Type': 'application/json',
-        'x-clerk-user-id': currentUser.id || 'usr_4'
+        'x-user-id': currentUser.id || 'usr_4'
       };
       const res = await fetch(`/api/admin/users/${userId}/role`, {
         method: 'POST',
@@ -135,7 +135,7 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
         <div>
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-emerald-400" />
-            <h1 className="text-2xl font-bold tracking-tight text-white">Clerk Enterprise Governance Vault</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Enterprise Governance Vault</h1>
           </div>
           <p className="text-sm text-slate-400 mt-1">
             Authenticated as <span className="text-emerald-400 font-mono">@{currentUser.username}</span> ({currentUser.role || 'Admin'})
@@ -214,7 +214,7 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
               <Users className="w-5 h-5 text-emerald-400" />
             </div>
             <div className="text-3xl font-extrabold text-white mt-2">{users.length}</div>
-            <div className="text-xs text-emerald-400 mt-2">Clerk User IDs Mapped</div>
+            <div className="text-xs text-emerald-400 mt-2">User Accounts Mapped</div>
           </div>
 
           <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6">
@@ -228,7 +228,7 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
 
           <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-400">Clerk Auth Provider</span>
+              <span className="text-sm font-medium text-slate-400">Authentication Security</span>
               <Key className="w-5 h-5 text-cyan-400" />
             </div>
             <div className="text-lg font-bold text-emerald-300 mt-2">Active & Enforced</div>
@@ -250,7 +250,7 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
                 <tr>
                   <th className="px-6 py-3">Anonymous Username</th>
                   <th className="px-6 py-3">Role</th>
-                  <th className="px-6 py-3">Clerk ID / Account Key</th>
+                  <th className="px-6 py-3">Account ID / Key</th>
                   <th className="px-6 py-3">Karma Score</th>
                   <th className="px-6 py-3">Method</th>
                   <th className="px-6 py-3 text-right">Actions</th>

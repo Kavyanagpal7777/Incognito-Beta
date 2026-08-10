@@ -71,7 +71,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
     setIsLoading(true);
     try {
       const headers = {
-        'x-clerk-user-id': currentUser.id || 'usr_4'
+        'x-user-id': currentUser.id || 'usr_4'
       };
       const res = await fetch(`/api/admin/legal/user/${userId}?reason=${encodeURIComponent(reason)}`, { headers });
       const data = await res.json();
@@ -90,7 +90,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
   // Fetch Audit Logs
   const fetchAuditLogs = async () => {
     try {
-      const headers = { 'x-clerk-user-id': currentUser.id || 'usr_4' };
+      const headers = { 'x-user-id': currentUser.id || 'usr_4' };
       const res = await fetch('/api/admin/audit-logs', { headers });
       const data = await res.json();
       if (data.success) {
@@ -118,7 +118,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-clerk-user-id': currentUser.id || 'usr_4'
+          'x-user-id': currentUser.id || 'usr_4'
         },
         body: JSON.stringify({ targetUserId: selectedUserId, granted })
       });
@@ -146,7 +146,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-clerk-user-id': currentUser.id || 'usr_4'
+          'x-user-id': currentUser.id || 'usr_4'
         },
         body: JSON.stringify({
           targetUserId: selectedUserId,

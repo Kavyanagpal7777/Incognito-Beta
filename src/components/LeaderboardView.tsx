@@ -57,7 +57,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
       setIsLoading(true);
       const res = await fetch(`/api/leaderboard?username=${encodeURIComponent(currentUser.username)}`, {
         headers: {
-          'x-clerk-user-id': currentUser.id
+          'x-user-id': currentUser.id
         }
       });
       const data = await res.json();
@@ -123,7 +123,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-clerk-user-id': currentUser.id
+          'x-user-id': currentUser.id
         }
       });
       const data = await res.json();

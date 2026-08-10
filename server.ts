@@ -25,7 +25,7 @@ app.use((req, res, next) => {
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; frame-src 'self'; worker-src 'self' blob:;"
   );
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   next();
@@ -867,11 +867,11 @@ accountsStore = accountsStore.map((acc) => {
 
 // AUTHENTICATION MIDDLEWARE
 const authenticateUser = (req: any, res: any, next: any) => {
-  const userId = req.headers["x-clerk-user-id"] || req.headers["x-user-id"] || req.query.userId || req.body.userId;
+  const userId = req.headers["x-user-id"] || req.query.userId || req.body.userId;
   if (!userId) {
     return res.status(401).json({ error: "Unauthorized: Missing user authentication credentials" });
   }
-  const user = accountsStore.find((a) => a.id === userId || (a as any).clerkUserId === userId);
+  const user = accountsStore.find((a) => a.id === userId);
   if (!user) {
     return res.status(401).json({ error: "Unauthorized: User session invalid" });
   }
@@ -917,12 +917,10 @@ app.get("/api/auth/oauth-url", (req, res) => {
     const url = `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
     return res.json({ success: true, url, provider: 'Facebook', redirectUri });
   } else {
-    // Google: Managed via Clerk client-side integration
     return res.json({
       success: true,
-      useClerk: true,
       provider: 'Google',
-      message: 'Google authentication is managed by Clerk.'
+      message: 'Google authentication handler.'
     });
   }
 });
@@ -1027,7 +1025,6 @@ app.get(['/auth/facebook/callback', '/auth/facebook/callback/'], async (req, res
   const existingUser = accountsStore.find(
     a => (a as any).facebookId === fbUser!.id ||
          a.id === fbUser!.id ||
-         (a as any).clerkUserId === fbUser!.id ||
          (fbUser!.email && a.email?.toLowerCase() === fbUser!.email.toLowerCase())
   );
 
@@ -1088,21 +1085,21 @@ app.get(['/auth/facebook/callback', '/auth/facebook/callback/'], async (req, res
 });
 
 // -------------------------------------------------------------------------
-// OFFICIAL GOOGLE OAUTH CALLBACK ROUTE (MANAGED VIA CLERK)
+// GOOGLE OAUTH CALLBACK ROUTE
 // -------------------------------------------------------------------------
 app.get(['/auth/google/callback', '/auth/google/callback/'], (req, res) => {
   res.redirect('/');
 });
 
 // -------------------------------------------------------------------------
-// USER CHECK ENDPOINT (CHECK IF CLERK USER IS ALREADY REGISTERED)
+// USER CHECK ENDPOINT
 // -------------------------------------------------------------------------
 app.get('/api/auth/check-user', (req, res) => {
-  const clerkUserId = req.query.clerkUserId ? String(req.query.clerkUserId) : '';
+  const userId = req.query.userId ? String(req.query.userId) : '';
   const email = req.query.email ? String(req.query.email) : '';
 
   const existingUser = accountsStore.find(
-    a => (clerkUserId && (a.id === clerkUserId || (a as any).clerkUserId === clerkUserId || (a as any).googleId === clerkUserId)) ||
+    a => (userId && (a.id === userId || (a as any).googleId === userId)) ||
          (email && a.email?.toLowerCase() === email.toLowerCase())
   );
 
@@ -1113,11 +1110,11 @@ app.get('/api/auth/check-user', (req, res) => {
 });
 
 // -------------------------------------------------------------------------
-// CLERK AUTHENTICATION SYNC ENDPOINT
+// AUTHENTICATION SYNC ENDPOINT
 // -------------------------------------------------------------------------
-app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
+app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
   const {
-    clerkUserId,
+    userId: rawUserId,
     email,
     phone,
     username,
@@ -1126,14 +1123,15 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
     realName
   } = req.body;
 
-  if (!clerkUserId) {
-    return res.status(400).json({ success: false, error: "Missing Clerk User ID" });
+  const targetUserId = rawUserId || (email ? `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
+
+  if (!targetUserId) {
+    return res.status(400).json({ success: false, error: "Missing User ID" });
   }
 
-  // 1. Check if account exists by Clerk User ID or private Email/Phone
+  // 1. Check if account exists by User ID or private Email/Phone
   let existingUser = accountsStore.find(
-    a => a.id === clerkUserId ||
-         (a as any).clerkUserId === clerkUserId ||
+    a => a.id === targetUserId ||
          (email && a.email?.toLowerCase() === email.toLowerCase()) ||
          (phone && a.phone === phone)
   );
@@ -1150,9 +1148,8 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
       });
     }
 
-    // Update permanent identifier to Clerk User ID if not already set
-    existingUser.id = clerkUserId;
-    (existingUser as any).clerkUserId = clerkUserId;
+    // Update permanent identifier if not already set
+    existingUser.id = targetUserId;
     if (email) existingUser.email = email;
     if (phone) existingUser.phone = phone;
     existingUser.loginMethod = loginMethod as any;
@@ -1162,7 +1159,7 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
     return res.json({
       success: true,
       user: sanitizeUserForResponse(existingUser),
-      clerkUserId,
+      userId: targetUserId,
       role: existingUser.role || "user",
       isAdmin: false,
       redirectTo: "/home"
@@ -1175,7 +1172,7 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
     assignedRole = 'super_admin';
   }
 
-  // 3. Create new user account with Clerk User ID as permanent internal identifier
+  // 3. Create new user account
   const fallbackGeneratedName = generateAnonymousUsernames({
     count: 1,
     existingUsernames: accountsStore.map(a => a.username),
@@ -1184,7 +1181,7 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
 
   const newUsername = username?.trim() || fallbackGeneratedName;
   const newAccount: UserAccount = {
-    id: clerkUserId,
+    id: targetUserId,
     username: newUsername,
     realName: realName?.trim() || 'Anonymous Vault Member',
     email: email || undefined,
@@ -1193,7 +1190,7 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
     bio: 'Incognito privacy-first network node.',
     karma: 25,
     joinDate: 'Jul 2026',
-    badges: ['Clerk Verified', 'Privacy Vault'],
+    badges: ['Verified', 'Privacy Vault'],
     loginMethod: loginMethod as any,
     deviceInfo: req.headers["user-agent"] || "Browser Client",
     ipAddress: String(req.ip || req.headers["x-forwarded-for"] || "127.0.0.1"),
@@ -1201,7 +1198,6 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
     twoFactorEnabled: false
   };
 
-  (newAccount as any).clerkUserId = clerkUserId;
   accountsStore.unshift(newAccount);
 
   const isAdmin = assignedRole === 'super_admin' || email?.toLowerCase() === 'kavyanagpal0005@gmail.com';
@@ -1211,22 +1207,22 @@ app.post("/api/auth/clerk-sync", loginRateLimiter, (req, res) => {
   if (isAdmin) {
     auditLogsStore.unshift({
       id: `log_${Date.now().toString(36)}`,
-      actorId: clerkUserId,
+      actorId: targetUserId,
       actorUsername: newUsername,
       role: assignedRole,
-      action: 'Administrator Account Provisioned via Clerk',
+      action: 'Administrator Account Provisioned',
       targetResource: 'Authentication Gateway',
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
       ipAddress: String(req.ip || "127.0.0.1"),
       deviceInfo: req.headers["user-agent"] || "Browser Client",
-      details: `Provisioned @${newUsername} as ${assignedRole} via Clerk Auth.`
+      details: `Provisioned @${newUsername} as ${assignedRole}.`
     });
   }
 
   return res.json({
     success: true,
     user: sanitizeUserForResponse(newAccount),
-    clerkUserId,
+    userId: targetUserId,
     role: assignedRole,
     isAdmin,
     redirectTo
@@ -2046,7 +2042,7 @@ app.get("/api/leaderboard", (req: any, res) => {
   }
 
   // Check user context if header or query param provided
-  const userId = req.headers["x-clerk-user-id"] || req.headers["x-user-id"] || req.query.userId;
+  const userId = req.headers["x-user-id"] || req.query.userId;
   const username = req.query.username;
 
   let currentUser = accountsStore.find(a => (userId && a.id === userId) || (username && a.username.toLowerCase() === (username as string).toLowerCase()));
@@ -2124,7 +2120,7 @@ app.get("/api/terms/config", (req, res) => {
 
 // GET Check if user or session has accepted current policy
 app.get("/api/terms/status", (req, res) => {
-  const userId = req.headers["x-clerk-user-id"] || req.headers["x-user-id"] || req.query.userId;
+  const userId = req.headers["x-user-id"] || req.query.userId;
   const username = req.query.username;
 
   if (userId || username) {
