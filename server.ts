@@ -930,11 +930,6 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
     const targetUserId = rawUserId || (email ? `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
 
     if (!targetUserId) {
-      console.error('[SERVER_REGISTRATION_DIAGNOSTICS] Status: 400 - Missing User ID', {
-        endpoint: '/api/auth/sync',
-        method: 'POST',
-        error: 'Missing User ID'
-      });
       return res.status(400).json({ success: false, error: "Missing User ID" });
     }
 
@@ -954,14 +949,6 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
       } else if (username && existingUser.username.toLowerCase() === username.trim().toLowerCase()) {
         duplicateError = "This handle is already taken. Please choose another username.";
       }
-
-      console.error('[SERVER_REGISTRATION_DIAGNOSTICS] Status: 400 - Duplicate Identifier', {
-        endpoint: '/api/auth/sync',
-        method: 'POST',
-        error: duplicateError,
-        username: username?.trim(),
-        loginMethod
-      });
 
       return res.status(400).json({
         success: false,
@@ -1038,16 +1025,10 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
     redirectTo
   });
   } catch (serverErr: any) {
-    console.error('[SERVER_REGISTRATION_DIAGNOSTICS] Status: 500 - Internal Server Error', {
-      endpoint: '/api/auth/sync',
-      method: 'POST',
-      error: serverErr?.message || serverErr,
-      stack: serverErr?.stack,
-      source: 'server.ts:app.post("/api/auth/sync")'
-    });
+    console.error('[SERVER_REGISTRATION_ERROR]:', serverErr);
     return res.status(500).json({
       success: false,
-      error: "Internal registration server exception: " + (serverErr?.message || "Unknown error")
+      error: "An error occurred during registration. Please try again."
     });
   }
 });

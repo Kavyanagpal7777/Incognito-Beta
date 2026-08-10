@@ -446,16 +446,9 @@ export default function App() {
           })
         });
       } catch (networkErr: any) {
-        console.error('[REGISTRATION_DIAGNOSTICS] Network/Fetch Error:', {
-          endpoint: '/api/auth/sync',
-          method: 'POST',
-          status: 0,
-          error: networkErr?.message || networkErr,
-          stack: networkErr?.stack,
-          source: 'src/App.tsx:handleSignupSubmit'
-        });
+        console.error('[REGISTRATION_ERROR] Network/Fetch Exception:', networkErr);
         setIsSubmitting(false);
-        triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
+        triggerToast('Registration failed: Network connection error.', 'error');
         return;
       }
 
@@ -463,15 +456,9 @@ export default function App() {
       try {
         data = await response.json();
       } catch (jsonErr: any) {
-        console.error('[REGISTRATION_DIAGNOSTICS] JSON Parse Error:', {
-          endpoint: '/api/auth/sync',
-          method: 'POST',
-          status: response.status,
-          error: jsonErr?.message || jsonErr,
-          source: 'src/App.tsx:handleSignupSubmit'
-        });
+        console.error('[REGISTRATION_ERROR] JSON Parse Error:', jsonErr);
         setIsSubmitting(false);
-        triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
+        triggerToast('Registration failed: Invalid response from server.', 'error');
         return;
       }
 
@@ -504,26 +491,12 @@ export default function App() {
           triggerToast('Your secure public identity has been forged!', 'success');
         }
       } else {
-        console.error('[REGISTRATION_DIAGNOSTICS] Registration API Returned Error:', {
-          endpoint: '/api/auth/sync',
-          method: 'POST',
-          status: response.status,
-          responseBody: data,
-          errorMessage: data.error,
-          source: 'src/App.tsx:handleSignupSubmit'
-        });
-        triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
+        triggerToast(data.error || 'Registration failed. Please try again.', 'error');
       }
     } catch (err: any) {
-      console.error('[REGISTRATION_DIAGNOSTICS] Unhandled Exception:', {
-        endpoint: '/api/auth/sync',
-        method: 'POST',
-        error: err?.message || err,
-        stack: err?.stack,
-        source: 'src/App.tsx:handleSignupSubmit'
-      });
+      console.error('[REGISTRATION_ERROR] Unhandled Exception:', err);
       setIsSubmitting(false);
-      triggerToast('Registration failed — check the browser console and server logs for the exact error.', 'error');
+      triggerToast(err?.message || 'Registration failed due to a server connection issue.', 'error');
     }
   };
 
