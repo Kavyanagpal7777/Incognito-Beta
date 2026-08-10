@@ -439,6 +439,7 @@ export default function App() {
           realName: signupRealName.trim() || 'Anonymous Vault Member',
           email: signupMode === 'email' ? signupEmail.trim() : undefined,
           phone: signupMode === 'phone' ? signupPhone.replace(/\s+/g, '') : undefined,
+          password: signupPassword,
           loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
         })
       });
@@ -450,6 +451,8 @@ export default function App() {
         const newAccount: UserAccount = data.user;
         setCurrentUser(newAccount);
         setIsAuthenticated(true);
+        setAccounts(prev => [newAccount, ...prev]);
+        localStorage.setItem('incognito_current_user', JSON.stringify(newAccount));
         localStorage.setItem('aetheris_current_user', JSON.stringify(newAccount));
 
         // Reset form fields
@@ -473,9 +476,9 @@ export default function App() {
       } else {
         triggerToast(data.error || 'Signup failed.', 'error');
       }
-    } catch (err) {
+    } catch (err: any) {
       setIsSubmitting(false);
-      triggerToast('Registration error occurred.', 'error');
+      triggerToast('Registration error occurred: ' + (err?.message || 'Server connection issue'), 'error');
     }
   };
 

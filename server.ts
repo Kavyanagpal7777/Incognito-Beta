@@ -122,9 +122,9 @@ function createRateLimiter(options: { windowMs: number; max: number; keyPrefix?:
   };
 }
 
-const publicApiRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 30, keyPrefix: "pub_api" });
-const loginRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: "auth_login" });
-const adminApiRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60, keyPrefix: "admin_api" });
+const publicApiRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 100, keyPrefix: "pub_api" });
+const loginRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 100, keyPrefix: "auth_login" });
+const adminApiRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 100, keyPrefix: "admin_api" });
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({
@@ -922,7 +922,8 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
     username,
     avatarUrl,
     loginMethod = 'Email',
-    realName
+    realName,
+    password
   } = req.body;
 
   const targetUserId = rawUserId || (email ? `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
@@ -931,41 +932,32 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
     return res.status(400).json({ success: false, error: "Missing User ID" });
   }
 
-  // 1. Check if account exists by User ID or private Email/Phone
+  // 1. Check if account already exists by username, email, or phone
   let existingUser = accountsStore.find(
-    a => a.id === targetUserId ||
-         (email && a.email?.toLowerCase() === email.toLowerCase()) ||
+    a => (username && a.username.toLowerCase() === username.trim().toLowerCase()) ||
+         (email && a.email?.toLowerCase() === email.trim().toLowerCase()) ||
          (phone && a.phone === phone)
   );
 
   if (existingUser) {
-    // Security Guard: Prevent unauthenticated social sync takeover of Admin/Staff or password-protected accounts
-    const isStaffOrProtected = ['owner', 'super_admin', 'admin', 'moderator'].includes(existingUser.role || '') || 
-                               existingUser.email?.toLowerCase() === 'kavyanagpal0005@gmail.com' ||
-                               !!existingUser.passwordHash;
-    if (isStaffOrProtected) {
-      return res.status(401).json({
+    if (email && existingUser.email?.toLowerCase() === email.trim().toLowerCase()) {
+      return res.status(400).json({
         success: false,
-        error: "Administrative and protected accounts cannot be logged into via unauthenticated social sync. Please authenticate via Portal Gateway with password and 2FA."
+        error: "An account with this email address already exists. Please log in."
       });
     }
-
-    // Update permanent identifier if not already set
-    existingUser.id = targetUserId;
-    if (email) existingUser.email = email;
-    if (phone) existingUser.phone = phone;
-    existingUser.loginMethod = loginMethod as any;
-    existingUser.deviceInfo = req.headers["user-agent"] || existingUser.deviceInfo;
-    existingUser.ipAddress = String(req.ip || req.headers["x-forwarded-for"] || "127.0.0.1");
-
-    return res.json({
-      success: true,
-      user: sanitizeUserForResponse(existingUser),
-      userId: targetUserId,
-      role: existingUser.role || "user",
-      isAdmin: false,
-      redirectTo: "/home"
-    });
+    if (phone && existingUser.phone === phone) {
+      return res.status(400).json({
+        success: false,
+        error: "An account with this mobile number already exists. Please log in."
+      });
+    }
+    if (username && existingUser.username.toLowerCase() === username.trim().toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        error: "This handle is already taken. Please choose another username."
+      });
+    }
   }
 
   // 2. Assign default role (check super_admin email rule)
@@ -974,7 +966,11 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
     assignedRole = 'super_admin';
   }
 
-  // 3. Create new user account
+  // 3. Generate salt and passwordHash if password was supplied
+  const salt = `salt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+  const passwordHash = password ? hashPassword(password, salt) : undefined;
+
+  // 4. Create new user account
   const fallbackGeneratedName = generateAnonymousUsernames({
     count: 1,
     existingUsernames: accountsStore.map(a => a.username),
@@ -988,6 +984,9 @@ app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
     realName: realName?.trim() || 'Anonymous Vault Member',
     email: email || undefined,
     phone: phone || undefined,
+    password: password || undefined,
+    salt,
+    passwordHash,
     avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
     bio: 'Incognito privacy-first network node.',
     karma: 25,
@@ -1102,22 +1101,28 @@ app.post("/api/auth/login", loginRateLimiter, (req, res) => {
   if (userId) {
     match = accountsStore.find(a => a.id === userId);
   } else if (email) {
-    match = accountsStore.find(a => a.email?.toLowerCase() === email.toLowerCase());
+    const cleanIdentifier = email.trim().toLowerCase();
+    match = accountsStore.find(a =>
+      (a.email && a.email.toLowerCase() === cleanIdentifier) ||
+      a.username.toLowerCase() === cleanIdentifier
+    );
   } else if (phone) {
     match = accountsStore.find(a => a.phone === phone);
   }
 
   // Constant-time password validation via PBKDF2 salted hash comparison
   let passwordMatches = false;
-  if (match && match.salt && match.passwordHash) {
-    const computedHash = hashPassword(password || "", match.salt);
-    try {
-      passwordMatches = crypto.timingSafeEqual(Buffer.from(computedHash), Buffer.from(match.passwordHash));
-    } catch {
-      passwordMatches = false;
+  if (match) {
+    if (match.salt && match.passwordHash) {
+      const computedHash = hashPassword(password || "", match.salt);
+      try {
+        passwordMatches = crypto.timingSafeEqual(Buffer.from(computedHash, 'utf8'), Buffer.from(match.passwordHash, 'utf8'));
+      } catch {
+        passwordMatches = false;
+      }
+    } else if (match.password) {
+      passwordMatches = (match.password === password);
     }
-  } else if (match && match.password) {
-    passwordMatches = (match.password === password);
   }
 
   // Generic authentication error message (OWASP Username Enumeration Prevention)
