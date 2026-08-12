@@ -99,7 +99,7 @@ export default function QuickPostCard({
     localStorage.setItem('incognito_drafts', JSON.stringify(updatedDrafts));
   };
 
-  // Handle Photo File Upload
+  // Handle Photo File Upload with Mobile & FileReader Fallback
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -113,10 +113,9 @@ export default function QuickPostCard({
       return;
     }
 
-    // Format validation
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedMimeTypes.includes(file.type.toLowerCase())) {
-      onTriggerToast('Unsupported image format.', 'error');
+    // Basic format validation - flexible for mobile formats (HEIC, JPG, PNG, WEBP, GIF, BMP)
+    if (file.type && !file.type.toLowerCase().startsWith('image/')) {
+      onTriggerToast('Please select a valid image file.', 'error');
       return;
     }
 
@@ -124,26 +123,64 @@ export default function QuickPostCard({
     setShowImageInput(true);
     setIsExpanded(true);
 
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const res = await fetch('/api/upload-image', {
-        method: 'POST',
-        body: formData,
+    // Client-side FileReader Promise Helper
+    const readAsDataUrl = (fileObj: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(fileObj);
       });
+    };
 
-      const data = await res.json();
+    try {
+      let finalImageUrl = '';
 
-      if (res.ok && data.success && data.imageUrl) {
-        setPostImageUrl(data.imageUrl);
+      // Attempt 1: Server endpoint upload
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const res = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (res.ok && data.success && (data.imageUrl || data.url)) {
+            finalImageUrl = data.imageUrl || data.url;
+          }
+        }
+      } catch (netErr) {
+        console.warn('Server image upload endpoint unreachable, falling back to local client processing:', netErr);
+      }
+
+      // Attempt 2: Fallback to local browser FileReader (Data URL)
+      if (!finalImageUrl) {
+        finalImageUrl = await readAsDataUrl(file);
+      }
+
+      if (finalImageUrl) {
+        setPostImageUrl(finalImageUrl);
         onTriggerToast('📸 Photo attached successfully!', 'success');
       } else {
-        const errorMsg = data.error || 'Image upload failed. Please try again.';
-        onTriggerToast(errorMsg, 'error');
+        onTriggerToast('Image upload failed. Please try again.', 'error');
       }
     } catch (err) {
-      onTriggerToast('Image upload failed. Please try again.', 'error');
+      console.error('Photo processing error:', err);
+      try {
+        const fallbackUrl = await readAsDataUrl(file);
+        if (fallbackUrl) {
+          setPostImageUrl(fallbackUrl);
+          onTriggerToast('📸 Photo attached successfully!', 'success');
+        } else {
+          onTriggerToast('Image upload failed. Please try again.', 'error');
+        }
+      } catch {
+        onTriggerToast('Image upload failed. Please try again.', 'error');
+      }
     } finally {
       setIsUploadingImage(false);
     }
@@ -448,7 +485,7 @@ export default function QuickPostCard({
         <input
           type="file"
           ref={fileInputRef}
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/*,image/heic,image/heif"
           onChange={handlePhotoUpload}
           className="hidden"
           id="photo-file-input"
