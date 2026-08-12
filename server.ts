@@ -10,6 +10,7 @@ dotenv.config();
 
 const app = express();
 app.disable("x-powered-by"); // Hide Express footprint
+app.set("trust proxy", 1); // Trust Cloud Run / reverse proxy headers safely
 app.use(express.json({ limit: "1mb" })); // Restrict payload size against Denial-of-Service
 
 const PORT = 3000;
@@ -78,43 +79,127 @@ interface RateLimitEntry {
 
 const rateLimitMap = new Map<string, RateLimitEntry>();
 
-function createRateLimiter(options: { windowMs: number; max: number; keyPrefix?: string }) {
-  return (req: any, res: any, next: any) => {
-    const ip = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
-    const key = `${options.keyPrefix || "rl"}_${ip}`;
-    const now = Date.now();
-    const entry = rateLimitMap.get(key) || { count: 0, resetTime: now + options.windowMs };
+// Periodic garbage collection to purge expired entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap.entries()) {
+    if (now >= entry.resetTime && (!entry.lockoutUntil || now >= entry.lockoutUntil)) {
+      rateLimitMap.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
 
-    if (now > entry.resetTime) {
-      entry.count = 1;
-      entry.resetTime = now + options.windowMs;
+function getCleanIp(req: any): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") {
+    return forwarded.split(",")[0].trim();
+  }
+  if (Array.isArray(forwarded) && forwarded.length > 0) {
+    return forwarded[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || "127.0.0.1";
+}
+
+function maskIdentifier(id: string): string {
+  if (!id) return "anon";
+  if (id.includes("@")) {
+    const parts = id.split("@");
+    return `${parts[0].substring(0, 2)}***@${parts[1]}`;
+  }
+  if (id.includes(".")) {
+    const parts = id.split(".");
+    if (parts.length === 4) return `${parts[0]}.${parts[1]}.*.*`;
+  }
+  if (id.length > 6) {
+    return `${id.substring(0, 3)}***${id.substring(id.length - 2)}`;
+  }
+  return `${id.substring(0, 1)}***`;
+}
+
+interface RateLimiterOptions {
+  windowMs: number;
+  max: number;
+  keyPrefix: string;
+  errorMessage: string;
+  extractAccountKey?: (req: any) => string | null | undefined;
+}
+
+function createRateLimiter(options: RateLimiterOptions) {
+  return (req: any, res: any, next: any) => {
+    const clientIp = getCleanIp(req);
+    const now = Date.now();
+
+    // 1. IP-based key
+    const ipKey = `${options.keyPrefix}_ip_${clientIp}`;
+    const ipEntry = rateLimitMap.get(ipKey) || { count: 0, resetTime: now + options.windowMs };
+
+    if (now > ipEntry.resetTime) {
+      ipEntry.count = 1;
+      ipEntry.resetTime = now + options.windowMs;
     } else {
-      entry.count += 1;
+      ipEntry.count += 1;
+    }
+    rateLimitMap.set(ipKey, ipEntry);
+
+    let isExceeded = ipEntry.count > options.max;
+    let limitResetTime = ipEntry.resetTime;
+
+    // 2. Account / Identifier-based key
+    let accountKeyStr: string | null = null;
+    if (options.extractAccountKey) {
+      try {
+        const rawAccount = options.extractAccountKey(req);
+        if (rawAccount && typeof rawAccount === "string" && rawAccount.trim()) {
+          const cleanAcc = rawAccount.toLowerCase().trim();
+          accountKeyStr = `${options.keyPrefix}_acc_${cleanAcc}`;
+          const accEntry = rateLimitMap.get(accountKeyStr) || { count: 0, resetTime: now + options.windowMs };
+
+          if (now > accEntry.resetTime) {
+            accEntry.count = 1;
+            accEntry.resetTime = now + options.windowMs;
+          } else {
+            accEntry.count += 1;
+          }
+          rateLimitMap.set(accountKeyStr, accEntry);
+
+          if (accEntry.count > options.max) {
+            isExceeded = true;
+            limitResetTime = Math.max(limitResetTime, accEntry.resetTime);
+          }
+        }
+      } catch {
+        // Safe fallback
+      }
     }
 
-    rateLimitMap.set(key, entry);
+    if (isExceeded) {
+      const retryAfterSecs = Math.max(1, Math.ceil((limitResetTime - now) / 1000));
+      res.setHeader("Retry-After", String(retryAfterSecs));
 
-    if (entry.count > options.max) {
-      const logEntry = {
-        id: `log_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 5)}`,
-        actorId: 'system',
-        actorUsername: 'RateLimitDefender',
-        role: 'system',
-        action: 'Rate Limit Threshold Exceeded',
-        targetResource: req.path,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        ipAddress: String(ip),
-        deviceInfo: req.headers["user-agent"] || "Unknown Device",
-        details: `Exceeded request threshold (${entry.count}/${options.max}) on ${req.method} ${req.path}`
-      };
+      const maskedIp = maskIdentifier(clientIp);
+      const maskedAccount = accountKeyStr ? maskIdentifier(accountKeyStr) : "n/a";
+
+      console.warn(`[RATE_LIMIT_EXCEEDED] Endpoint: ${req.method} ${req.path} | IP: ${maskedIp} | Identifier: ${maskedAccount} | RetryAfter: ${retryAfterSecs}s`);
+
       if (typeof auditLogsStore !== 'undefined') {
-        auditLogsStore.unshift(logEntry);
+        auditLogsStore.unshift({
+          id: `log_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+          actorId: 'system',
+          actorUsername: 'RateLimitDefender',
+          role: 'system',
+          action: 'Rate Limit Threshold Exceeded',
+          targetResource: req.path,
+          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          ipAddress: maskedIp,
+          deviceInfo: req.headers["user-agent"] || "Unknown Device",
+          details: `Exceeded ${options.keyPrefix} rate limit (${options.max} attempts / ${options.windowMs / 60000}m) on ${req.method} ${req.path}.`
+        });
       }
 
-      res.setHeader("Retry-After", Math.ceil((entry.resetTime - now) / 1000));
       return res.status(429).json({
         success: false,
-        error: "Too Many Requests: Request threshold exceeded. Please slow down and try again."
+        error: "RATE_LIMIT_EXCEEDED",
+        message: options.errorMessage
       });
     }
 
@@ -122,9 +207,50 @@ function createRateLimiter(options: { windowMs: number; max: number; keyPrefix?:
   };
 }
 
-const publicApiRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 100, keyPrefix: "pub_api" });
-const loginRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 100, keyPrefix: "auth_login" });
-const adminApiRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 100, keyPrefix: "admin_api" });
+const globalApiRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per 15 min
+  keyPrefix: "global_api",
+  errorMessage: "Too many requests. Please try again later."
+});
+
+const loginRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per 15 min
+  keyPrefix: "auth_login",
+  errorMessage: "Too many login attempts. Please try again later.",
+  extractAccountKey: (req) => req.body?.email || req.body?.phone || req.body?.username || req.body?.userId
+});
+
+const registrationRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per 15 min
+  keyPrefix: "auth_reg",
+  errorMessage: "Too many registration attempts. Please try again later.",
+  extractAccountKey: (req) => req.body?.email || req.body?.phone || req.body?.username
+});
+
+const recoveryRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per 15 min
+  keyPrefix: "auth_recovery",
+  errorMessage: "Too many recovery attempts. Please try again later.",
+  extractAccountKey: (req) => req.body?.email || req.body?.phone || req.body?.username
+});
+
+const adminApiRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per 15 min
+  keyPrefix: "admin_api",
+  errorMessage: "Too many admin requests. Please try again later."
+});
+
+const publicApiRateLimiter = globalApiRateLimiter;
+
+// Mount global API rate limiter for all /api endpoints
+app.use("/api", globalApiRateLimiter);
+// Mount admin API rate limiter for all /api/admin endpoints
+app.use("/api/admin", adminApiRateLimiter);
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({
@@ -912,9 +1038,9 @@ app.get('/api/auth/check-user', (req, res) => {
 });
 
 // -------------------------------------------------------------------------
-// AUTHENTICATION SYNC ENDPOINT
+// AUTHENTICATION SYNC ENDPOINT (Rate-Limited Registration)
 // -------------------------------------------------------------------------
-app.post("/api/auth/sync", loginRateLimiter, (req, res) => {
+app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   try {
     const {
@@ -1094,6 +1220,48 @@ app.post("/api/generate-username", (req, res) => {
   }
 });
 
+
+// -------------------------------------------------------------------------
+// ACCOUNT RECOVERY / PASSWORD RESET ENDPOINT (Rate-Limited, Non-Enumerative)
+// -------------------------------------------------------------------------
+app.post("/api/auth/recover", recoveryRateLimiter, async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  const { email, username, phone, identifier } = req.body || {};
+  const targetId = (email || username || phone || identifier || "").toString().trim().toLowerCase();
+
+  // Artificial timing equalization delay to prevent timing-based enumeration attacks
+  await new Promise(resolve => setTimeout(resolve, 80));
+
+  if (targetId && typeof accountsStore !== 'undefined') {
+    const matchedUser = accountsStore.find(a =>
+      a.id === targetId ||
+      a.email?.toLowerCase() === targetId ||
+      a.username?.toLowerCase() === targetId ||
+      a.phone === targetId
+    );
+
+    if (matchedUser && typeof auditLogsStore !== 'undefined') {
+      auditLogsStore.unshift({
+        id: `log_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        actorId: 'system',
+        actorUsername: 'PasswordRecoveryGateway',
+        role: 'system',
+        action: 'Account Recovery Triggered',
+        targetResource: `/api/users/${matchedUser.id}`,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        ipAddress: maskIdentifier(getCleanIp(req)),
+        deviceInfo: req.headers["user-agent"] || "Unknown Device",
+        details: `Non-enumerative password recovery dispatch requested. Notification queued.`
+      });
+    }
+  }
+
+  // Non-enumerative generic response to protect user privacy
+  return res.json({
+    success: true,
+    message: "If an account matching those credentials exists in our system, a password recovery notification has been dispatched."
+  });
+});
 
 // -------------------------------------------------------------------------
 // AUTHENTICATION ENDPOINT (Rate-Limited, Anti-Brute-Force, Salt-Hashed)

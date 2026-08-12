@@ -84,8 +84,13 @@ export default function App() {
   // Tab management inside security vault ('security' | 'username')
   const [dashboardTab, setDashboardTab] = useState<'security' | 'username'>('security');
 
-  // Navigation Tabs for login gate: 'login' | 'signup'
-  const [authTab, setAuthTab] = useState<'login' | 'signup'>('signup');
+  // Navigation Tabs for login gate: 'login' | 'signup' | 'recover'
+  const [authTab, setAuthTab] = useState<'login' | 'signup' | 'recover'>('signup');
+
+  // Recovery Form Fields & State
+  const [recoveryIdentifier, setRecoveryIdentifier] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryNotice, setRecoveryNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Input Toggles: 'email' | 'phone'
   const [loginMode, setLoginMode] = useState<'email' | 'phone'>('email');
@@ -419,8 +424,9 @@ export default function App() {
         return;
       }
     } else {
-      if (!signupPhone.trim() || !/^\d{7,15}$/.test(signupPhone.replace(/\s+/g, ''))) {
-        triggerToast('Please enter a valid mobile number.', 'error');
+      const sanitizedPhone = signupPhone.replace(/[\s\-\(\)]/g, '');
+      if (!sanitizedPhone || !/^\+?\d{7,15}$/.test(sanitizedPhone)) {
+        triggerToast('Please enter a valid mobile number (7–15 digits).', 'error');
         return;
       }
     }
@@ -455,7 +461,7 @@ export default function App() {
             username: signupUsername.trim(),
             realName: signupRealName.trim() || 'Anonymous Vault Member',
             email: signupMode === 'email' ? signupEmail.trim() : undefined,
-            phone: signupMode === 'phone' ? signupPhone.replace(/\s+/g, '') : undefined,
+            phone: signupMode === 'phone' ? signupPhone.replace(/[\s\-\(\)]/g, '') : undefined,
             password: signupPassword,
             loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
           })
@@ -531,6 +537,43 @@ export default function App() {
       console.error('[REGISTRATION_ERROR] Unhandled Exception:', err);
       setIsSubmitting(false);
       triggerToast(err?.message || 'Registration failed due to a server connection issue.', 'error');
+    }
+  };
+
+  // PASSWORD RECOVERY HANDLER (Rate-Limited, Non-Enumerative)
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryNotice(null);
+
+    if (!recoveryIdentifier.trim()) {
+      triggerToast('Please enter your registered email address or handle.', 'error');
+      return;
+    }
+
+    setRecoveryLoading(true);
+    try {
+      const response = await fetch('/api/auth/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: recoveryIdentifier.trim() })
+      });
+
+      const data = await response.json();
+
+      if (response.status === 429) {
+        const msg = data.message || 'Too many recovery attempts. Please try again later.';
+        setRecoveryNotice({ type: 'error', message: msg });
+        triggerToast(msg, 'error');
+      } else {
+        const msg = data.message || 'If an account matching those credentials exists in our system, a password recovery notification has been dispatched.';
+        setRecoveryNotice({ type: 'success', message: msg });
+        triggerToast(msg, 'success');
+      }
+    } catch (err) {
+      setRecoveryNotice({ type: 'error', message: 'Unable to connect to recovery gateway. Please check network status.' });
+      triggerToast('Network error during recovery request.', 'error');
+    } finally {
+      setRecoveryLoading(false);
     }
   };
 
@@ -808,7 +851,7 @@ export default function App() {
                   <div className="text-left mb-2 sm:mb-3 lg:mb-4 flex-none" id="card-welcome-header">
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-display text-white tracking-wide">
-                        {authTab === 'login' ? 'Portal Gateway' : 'Forge Persona'}
+                        {authTab === 'login' ? 'Portal Gateway' : authTab === 'signup' ? 'Forge Persona' : 'Account Recovery'}
                       </h2>
                       <span className="px-2.5 py-0.5 rounded-full bg-violet-950/60 border border-violet-400/40 text-[9px] sm:text-[10px] font-black text-violet-300 uppercase tracking-widest flex items-center gap-1 shadow-[0_0_15px_rgba(168,85,247,0.25)]">
                         <ShieldCheck className="w-3 h-3 text-violet-400" />
@@ -818,17 +861,19 @@ export default function App() {
                     <p className="text-white/50 text-[11px] sm:text-xs mt-0.5">
                       {authTab === 'login' 
                         ? 'Authenticate into your encrypted anonymous workspace.' 
-                        : 'Claim your untraceable identity on the network.'}
+                        : authTab === 'signup'
+                        ? 'Claim your untraceable identity on the network.'
+                        : 'Zero-knowledge non-enumerative reset gateway.'}
                     </p>
                   </div>
 
-                {/* LOGIN & SIGN UP SEGMENTED NAV TABS */}
+                {/* LOGIN & SIGN UP & RECOVER SEGMENTED NAV TABS */}
                 <div className="p-1 bg-black/50 border border-white/10 rounded-2xl mb-2.5 sm:mb-3.5 lg:mb-4 w-full flex-none relative" id="nav-tabs-container">
-                  <div className="grid grid-cols-2 gap-1 relative z-10">
+                  <div className="grid grid-cols-3 gap-1 relative z-10">
                     <button
                       type="button"
-                      onClick={() => setAuthTab('login')}
-                      className={`py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      onClick={() => { setAuthTab('login'); setRecoveryNotice(null); }}
+                      className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
                         authTab === 'login'
                           ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
                           : 'text-white/40 hover:text-white'
@@ -839,8 +884,8 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAuthTab('signup')}
-                      className={`py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      onClick={() => { setAuthTab('signup'); setRecoveryNotice(null); }}
+                      className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
                         authTab === 'signup'
                           ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
                           : 'text-white/40 hover:text-white'
@@ -849,6 +894,18 @@ export default function App() {
                     >
                       <span>SIGN UP</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAuthTab('recover'); setRecoveryNotice(null); }}
+                      className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        authTab === 'recover'
+                          ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                          : 'text-white/40 hover:text-white'
+                      }`}
+                      id="tab-recover-btn"
+                    >
+                      <span>RECOVER</span>
+                    </button>
                   </div>
                 </div>
 
@@ -856,16 +913,84 @@ export default function App() {
                 <AnimatePresence mode="wait">
                   <motion.form 
                     key={authTab}
-                    initial={{ opacity: 0, x: authTab === 'login' ? -15 : 15 }}
+                    initial={{ opacity: 0, x: authTab === 'login' ? -15 : authTab === 'signup' ? 0 : 15 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: authTab === 'login' ? 15 : -15 }}
+                    exit={{ opacity: 0, x: -15 }}
                     transition={{ duration: 0.25, ease: "easeInOut" }}
-                    onSubmit={authTab === 'login' ? handleLoginSubmit : handleSignupSubmit} 
+                    onSubmit={authTab === 'login' ? handleLoginSubmit : authTab === 'signup' ? handleSignupSubmit : handleRecoverySubmit} 
                     noValidate 
                     className="flex-grow flex flex-col justify-between"
                     id="auth-flow-form"
                   >
-                    <div className="space-y-2 sm:space-y-2.5">
+                    {authTab === 'recover' ? (
+                      <div className="space-y-3 text-left my-auto">
+                        <div className="p-3 bg-violet-950/40 border border-violet-500/30 rounded-xl text-xs text-violet-200/90 leading-relaxed">
+                          <div className="flex items-center gap-2 text-violet-300 font-bold mb-1">
+                            <ShieldAlert className="w-4 h-4 text-violet-400" />
+                            <span>Non-Enumerative Reset Gateway</span>
+                          </div>
+                          To protect user privacy and prevent credential enumeration attacks, generic recovery feedback is rendered regardless of account existence.
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-violet-300/90 font-bold flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-violet-400" />
+                            <span>ACCOUNT EMAIL OR HANDLE</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={recoveryIdentifier}
+                            onChange={(e) => setRecoveryIdentifier(e.target.value)}
+                            placeholder="e.g. user@incognito.sec or ShadowNova"
+                            className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-violet-500/60 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
+                            id="input-recovery-identifier"
+                          />
+                        </div>
+
+                        {recoveryNotice && (
+                          <div className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start gap-2 ${
+                            recoveryNotice.type === 'error'
+                              ? 'bg-rose-950/50 border-rose-500/60 text-rose-200'
+                              : 'bg-emerald-950/50 border-emerald-500/60 text-emerald-200'
+                          }`}>
+                            <span className="flex-1">{recoveryNotice.message}</span>
+                          </div>
+                        )}
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={recoveryLoading}
+                            className="w-full py-2.5 min-h-[48px] rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-xs sm:text-sm tracking-wide text-white shadow-[0_6px_25px_rgba(124,58,237,0.45)] flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                            id="recovery-submit-btn"
+                          >
+                            {recoveryLoading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>DISPATCHING RECOVERY SIGNAL...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>DISPATCH RECOVERY LINK</span>
+                                <ArrowRight className="w-4 h-4 text-white" />
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        <div className="text-center pt-1">
+                          <button
+                            type="button"
+                            onClick={() => { setAuthTab('login'); setRecoveryNotice(null); }}
+                            className="text-[10px] text-violet-400 hover:text-violet-300 font-bold uppercase tracking-widest cursor-pointer bg-transparent border-none outline-none"
+                          >
+                            ← Return to Login
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2 sm:space-y-2.5">
 
                       {/* FIELDS CONTAINER */}
                       <div className="space-y-2 sm:space-y-2.5">
@@ -1080,8 +1205,9 @@ export default function App() {
                             {authTab === 'login' && (
                               <button
                                 type="button"
-                                onClick={() => triggerToast('Password recovery simulator active. Contact network admin.', 'info')}
+                                onClick={() => { setAuthTab('recover'); setRecoveryNotice(null); }}
                                 className="text-[9px] font-bold text-violet-400 uppercase tracking-widest hover:underline cursor-pointer bg-transparent border-none outline-none"
+                                id="btn-forgot-password"
                               >
                                 Forgot?
                               </button>
@@ -1194,7 +1320,9 @@ export default function App() {
                         <span>✓ Zero Tracking</span>
                       </div>
                     </div>
-                  </motion.form>
+                  </>
+                )}
+              </motion.form>
                 </AnimatePresence>
               </div>
             </motion.div>
