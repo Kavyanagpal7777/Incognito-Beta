@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Image as ImageIcon, 
@@ -23,7 +23,8 @@ import {
   FileText,
   Bookmark,
   Trash2,
-  FolderKanban
+  FolderKanban,
+  Upload
 } from 'lucide-react';
 import { UserAccount, Post, PostPoll } from '../types';
 import { COMMUNITIES } from '../data/mockData';
@@ -59,6 +60,9 @@ export default function QuickPostCard({
   const [selectedCommunity, setSelectedCommunity] = useState('😂 Funny');
   const [postImageUrl, setPostImageUrl] = useState('');
   const [showImageInput, setShowImageInput] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [postTag, setPostTag] = useState('');
   const [tags, setTags] = useState<string[]>(['PrivacyFirst']);
   
@@ -95,10 +99,65 @@ export default function QuickPostCard({
     localStorage.setItem('incognito_drafts', JSON.stringify(updatedDrafts));
   };
 
+  // Handle Photo File Upload
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value so selecting same file again re-triggers
+    e.target.value = '';
+
+    // Size validation (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      onTriggerToast('Image must be 10 MB or smaller.', 'error');
+      return;
+    }
+
+    // Format validation
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedMimeTypes.includes(file.type.toLowerCase())) {
+      onTriggerToast('Unsupported image format.', 'error');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setShowImageInput(true);
+    setIsExpanded(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success && data.imageUrl) {
+        setPostImageUrl(data.imageUrl);
+        onTriggerToast('📸 Photo attached successfully!', 'success');
+      } else {
+        const errorMsg = data.error || 'Image upload failed. Please try again.';
+        onTriggerToast(errorMsg, 'error');
+      }
+    } catch (err) {
+      onTriggerToast('Image upload failed. Please try again.', 'error');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Handle Remove Photo
+  const handleRemovePhoto = () => {
+    setPostImageUrl('');
+  };
+
   // Handle Save Draft
   const handleSaveDraft = () => {
-    if (!postContent.trim() && !postTitle.trim()) {
-      onTriggerToast('Write a title or body content to save a draft.', 'info');
+    if (!postContent.trim() && !postTitle.trim() && !postImageUrl.trim()) {
+      onTriggerToast('Write text or attach a photo to save a draft.', 'info');
       return;
     }
 
@@ -135,6 +194,8 @@ export default function QuickPostCard({
     if (draft.imageUrl) {
       setPostImageUrl(draft.imageUrl);
       setShowImageInput(true);
+    } else {
+      setPostImageUrl('');
     }
     if (draft.tags && draft.tags.length > 0) {
       setTags(draft.tags);
@@ -218,8 +279,8 @@ export default function QuickPostCard({
   // Submit Post
   const handleSubmitPost = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postContent.trim()) {
-      onTriggerToast('Please write something before posting.', 'error');
+    if (!postContent.trim() && !postImageUrl.trim()) {
+      onTriggerToast('Please write text or attach a photo before broadcasting.', 'error');
       return;
     }
 
@@ -383,38 +444,94 @@ export default function QuickPostCard({
           )}
         </div>
 
-        {/* IMAGE INPUT FIELD IF TOGGLED */}
+        {/* HIDDEN FILE INPUT FOR DEVICE PHOTO GALLERY / FILE PICKER */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handlePhotoUpload}
+          className="hidden"
+          id="photo-file-input"
+        />
+
+        {/* IMAGE ATTACHMENT / PREVIEW PANEL */}
         <AnimatePresence>
-          {showImageInput && (
+          {(showImageInput || postImageUrl || isUploadingImage) && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="p-3 rounded-2xl bg-black/30 border border-white/10 space-y-2"
+              className="p-3.5 rounded-2xl bg-black/40 border border-violet-500/30 space-y-3 relative overflow-hidden text-left"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-violet-300 uppercase tracking-wider flex items-center gap-1">
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  Attach Image URL
+                <span className="text-[10px] font-bold text-violet-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
+                  <span>Photo Attachment</span>
                 </span>
                 <button
                   type="button"
-                  onClick={() => setShowImageInput(false)}
-                  className="text-white/40 hover:text-white"
+                  onClick={() => {
+                    setShowImageInput(false);
+                    setPostImageUrl('');
+                  }}
+                  className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                  title="Close attachment section"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <input
-                type="text"
-                value={postImageUrl}
-                onChange={(e) => setPostImageUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/photo-..."
-                className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white placeholder-white/20 outline-none"
-              />
-              {postImageUrl && (
-                <div className="w-full h-32 rounded-xl overflow-hidden border border-white/10 relative">
-                  <img src={postImageUrl} alt="Preview" className="w-full h-full object-cover" />
+
+              {/* Uploading Spinner State */}
+              {isUploadingImage && (
+                <div className="w-full py-8 rounded-xl bg-violet-950/20 border border-violet-500/20 flex flex-col items-center justify-center gap-2 text-violet-300">
+                  <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+                  <span className="text-xs font-bold tracking-wide">Uploading photo to secure gateway...</span>
+                </div>
+              )}
+
+              {/* Uploaded Photo Preview */}
+              {!isUploadingImage && postImageUrl && (
+                <div className="w-full max-h-64 rounded-xl overflow-hidden border border-violet-500/40 relative group bg-black/60 shadow-lg">
+                  <img src={postImageUrl} alt="Post Attachment Preview" className="w-full h-full max-h-64 object-contain mx-auto" />
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/80 hover:bg-rose-600 text-white border border-white/20 backdrop-blur-md transition-all shadow-md cursor-pointer"
+                    title="Remove selected photo"
+                    id="btn-remove-photo"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Device Photo Selector & Optional URL Input */}
+              {!isUploadingImage && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 py-2 px-3 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 border border-violet-400/50 text-violet-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.01]"
+                      id="btn-select-photo-file"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-violet-300" />
+                      <span>{postImageUrl ? 'Change Photo from Device' : 'Upload Photo from Gallery / Storage'}</span>
+                    </button>
+                  </div>
+
+                  {!postImageUrl && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] text-white/40 uppercase font-bold tracking-wider shrink-0">OR URL:</span>
+                      <input
+                        type="text"
+                        value={postImageUrl}
+                        onChange={(e) => setPostImageUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white placeholder-white/20 outline-none focus:border-violet-500"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -592,23 +709,28 @@ export default function QuickPostCard({
           {/* QUICK ACTION BUTTONS */}
           <div className="flex items-center gap-1 sm:gap-2">
             
-            {/* 📷 IMAGE */}
+            {/* 📷 ADD PHOTO / IMAGE */}
             <motion.button
               type="button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                setShowImageInput(!showImageInput);
                 setIsExpanded(true);
+                if (!postImageUrl) {
+                  fileInputRef.current?.click();
+                } else {
+                  setShowImageInput(!showImageInput);
+                }
               }}
               className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                showImageInput 
+                showImageInput || postImageUrl
                   ? 'bg-violet-600/30 border-violet-400/50 text-violet-200 shadow-sm' 
                   : 'bg-white/[0.02] hover:bg-white/[0.08] border-white/10 text-white/70 hover:text-white'
               }`}
+              id="btn-add-photo"
             >
               <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
-              <span className="hidden sm:inline">Image</span>
+              <span className="hidden sm:inline">Add Photo</span>
             </motion.button>
 
             {/* 🎥 VIDEO */}
@@ -717,7 +839,7 @@ export default function QuickPostCard({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               type="submit"
-              disabled={!postContent.trim()}
+              disabled={(!postContent.trim() && !postImageUrl.trim()) || isUploadingImage}
               className="px-4 py-2 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-xs tracking-wide text-white shadow-[0_4px_20px_rgba(124,58,237,0.4)] flex items-center gap-2 cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed border border-violet-400/30"
               id="quick-post-submit-btn"
             >

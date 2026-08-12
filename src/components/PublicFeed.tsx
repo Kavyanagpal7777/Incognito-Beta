@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { Post, UserAccount } from '../types';
 import PostCard from './PostCard';
-import QuickPostCard from './QuickPostCard';
 import { COMMUNITIES } from '../data/mockData';
 
 interface PublicFeedProps {
@@ -199,14 +198,6 @@ export default function PublicFeed({
   return (
     <div className="space-y-4" id="incognito-public-feed">
       
-      {/* TOP QUICK POST / DRAFT CREATOR CARD */}
-      <QuickPostCard
-        currentUser={currentUser}
-        onPostCreated={handlePostCreated}
-        onTriggerToast={onTriggerToast}
-        isGlobalAnonymousMode={isAnonymousMode}
-      />
-
       {/* CATEGORY TABS FILTER & SORT BAR */}
       <div className="flex flex-wrap items-center justify-between gap-3 py-2 border-y border-white/10" id="community-filter-bar">
         

@@ -229,6 +229,77 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentUser]);
 
+  // Keyboard Navigation & Scrolling Controls for Main Feed
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Do not hijack browser shortcuts with modifier keys (Ctrl, Alt, Meta)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      // Check if user is typing in an editable field, input, textarea, contenteditable, or search field
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const isEditable = 
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable ||
+          target.getAttribute('contenteditable') === 'true' ||
+          target.closest('input, textarea, select, [contenteditable="true"]') !== null;
+
+        if (isEditable) return;
+      }
+
+      // Identify scroll container: <main> if scrollable, or window / scrolling element
+      const mainContainer = document.querySelector('main');
+      const container = (mainContainer && mainContainer.scrollHeight > mainContainer.clientHeight)
+        ? mainContainer
+        : (document.scrollingElement || document.documentElement);
+
+      const screenHeight = container.clientHeight || window.innerHeight;
+      const scrollStep = 120; // Step size for arrow keys
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          container.scrollBy({ top: scrollStep, behavior: 'smooth' });
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          container.scrollBy({ top: -scrollStep, behavior: 'smooth' });
+          break;
+        case 'PageDown':
+          e.preventDefault();
+          container.scrollBy({ top: screenHeight * 0.85, behavior: 'smooth' });
+          break;
+        case 'PageUp':
+          e.preventDefault();
+          container.scrollBy({ top: -screenHeight * 0.85, behavior: 'smooth' });
+          break;
+        case ' ':
+          e.preventDefault();
+          if (e.shiftKey) {
+            container.scrollBy({ top: -screenHeight * 0.85, behavior: 'smooth' });
+          } else {
+            container.scrollBy({ top: screenHeight * 0.85, behavior: 'smooth' });
+          }
+          break;
+        case 'Home':
+          e.preventDefault();
+          container.scrollTo({ top: 0, behavior: 'smooth' });
+          break;
+        case 'End':
+          e.preventDefault();
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Real-time Username Checking Logic (Sign Up Form)
   useEffect(() => {
     if (!signupUsername.trim()) {

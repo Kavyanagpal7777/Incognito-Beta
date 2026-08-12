@@ -87,7 +87,7 @@ export default function FloatingPostButton({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-2xl bg-[#0c081e] border border-violet-500/30 rounded-3xl p-4 sm:p-6 shadow-[0_25px_60px_rgba(124,58,237,0.35)] z-10 my-auto"
+              className="relative w-full max-w-2xl bg-[#0c081e] border border-violet-500/30 rounded-3xl p-4 sm:p-6 shadow-[0_25px_60px_rgba(124,58,237,0.35)] z-10 my-auto max-h-[85vh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar"
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-3 mb-2 border-b border-white/10">

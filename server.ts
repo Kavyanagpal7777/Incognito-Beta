@@ -1,6 +1,8 @@
 import express from "express";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
+import multer from "multer";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -14,6 +16,50 @@ app.set("trust proxy", 1); // Trust Cloud Run / reverse proxy headers safely
 app.use(express.json({ limit: "1mb" })); // Restrict payload size against Denial-of-Service
 
 const PORT = 3000;
+
+// Setup Uploads Directory for Photo Uploads
+const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Multer Config with Memory Storage & 10MB Limit
+const upload = multer({
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per image
+  },
+  storage: multer.memoryStorage(),
+});
+
+// Helper function to inspect binary magic bytes of uploaded buffers
+function getImageMimeFromBuffer(buffer: Buffer): { mime: string; ext: string } | null {
+  if (!buffer || buffer.length < 12) return null;
+
+  // JPEG / JPG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { mime: "image/jpeg", ext: "jpg" };
+  }
+
+  // PNG: 89 50 4E 47
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return { mime: "image/png", ext: "png" };
+  }
+
+  // GIF: 47 49 46 38 ('GIF8')
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return { mime: "image/gif", ext: "gif" };
+  }
+
+  // WEBP: RIFF...WEBP
+  if (
+    buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+    buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+  ) {
+    return { mime: "image/webp", ext: "webp" };
+  }
+
+  return null;
+}
 
 // =========================================================================
 // ENTERPRISE SECURITY HEADERS MIDDLEWARE (OWASP ASVS Compliance)
@@ -251,6 +297,81 @@ const publicApiRateLimiter = globalApiRateLimiter;
 app.use("/api", globalApiRateLimiter);
 // Mount admin API rate limiter for all /api/admin endpoints
 app.use("/api/admin", adminApiRateLimiter);
+
+// Serve uploaded images securely
+app.get("/api/uploads/:filename", (req, res) => {
+  const filename = path.basename(req.params.filename); // Prevents path traversal
+  const filePath = path.join(UPLOADS_DIR, filename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "Image not found" });
+  }
+
+  const ext = path.extname(filename).toLowerCase();
+  let contentType = "image/jpeg";
+  if (ext === ".png") contentType = "image/png";
+  if (ext === ".webp") contentType = "image/webp";
+  if (ext === ".gif") contentType = "image/gif";
+
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.sendFile(filePath);
+});
+
+// Secure Photo Upload Endpoint (10MB Max, Server-Side Magic Byte Validation)
+app.post("/api/upload-image", publicApiRateLimiter, (req, res) => {
+  upload.single("image")(req, res, (err: any) => {
+    res.setHeader("Content-Type", "application/json");
+
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ success: false, error: "Image must be 10 MB or smaller." });
+      }
+      return res.status(400).json({ success: false, error: "Image upload failed. Please try again." });
+    }
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, error: "Image upload failed. Please try again." });
+    }
+
+    // Server-side file size check (10MB limit)
+    if (req.file.buffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ success: false, error: "Image must be 10 MB or smaller." });
+    }
+
+    // Inspect binary magic bytes (reject HTML/SVG/executables)
+    const imageInfo = getImageMimeFromBuffer(req.file.buffer);
+    if (!imageInfo) {
+      return res.status(400).json({ success: false, error: "Unsupported image format." });
+    }
+
+    // Verify allowed mime types
+    const allowedMimetypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    const clientMime = (req.file.mimetype || "").toLowerCase();
+    if (!allowedMimetypes.includes(clientMime) && !allowedMimetypes.includes(imageInfo.mime)) {
+      return res.status(400).json({ success: false, error: "Unsupported image format." });
+    }
+
+    try {
+      // Generate safe unique filename/server-side object key
+      const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(8).toString("hex")}`;
+      const safeFilename = `img_${uniqueSuffix}.${imageInfo.ext}`;
+      const savePath = path.join(UPLOADS_DIR, safeFilename);
+
+      fs.writeFileSync(savePath, req.file.buffer);
+
+      const imageUrl = `/api/uploads/${safeFilename}`;
+      return res.json({
+        success: true,
+        imageUrl,
+        url: imageUrl,
+        filename: safeFilename
+      });
+    } catch (writeErr) {
+      return res.status(500).json({ success: false, error: "Image upload failed. Please try again." });
+    }
+  });
+});
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({
