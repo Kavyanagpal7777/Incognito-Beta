@@ -130,26 +130,53 @@ export default function PublicFeed({
     onTriggerToast('Comment posted anonymously!', 'success');
   };
 
-  // Poll Vote Handler
-  const handleVotePoll = (postId: string, optionId: string) => {
+  // Poll Vote Handler (Toggleable, vote change, immediate UI update)
+  const handleVotePoll = async (postId: string, optionId: string) => {
+    // Optimistic UI update
     setPosts(prev => 
       prev.map(post => {
         if (post.id === postId && post.poll) {
           const currentPoll = post.poll;
-          if (currentPoll.userVotedId === optionId) return post; // already voted this
+          const isTogglingOff = currentPoll.userVotedId === optionId;
+          const isChangingVote = Boolean(currentPoll.userVotedId && currentPoll.userVotedId !== optionId);
 
-          const updatedOptions = currentPoll.options.map(opt => {
-            if (opt.id === optionId) return { ...opt, votes: opt.votes + 1 };
-            if (opt.id === currentPoll.userVotedId) return { ...opt, votes: Math.max(0, opt.votes - 1) };
-            return opt;
-          });
+          let updatedOptions = [...currentPoll.options];
+          let updatedTotalVotes = currentPoll.totalVotes || 0;
+          let newUserVotedId: string | undefined = optionId;
+
+          if (isTogglingOff) {
+            // Remove vote
+            updatedOptions = updatedOptions.map(opt => {
+              if (opt.id === optionId) return { ...opt, votes: Math.max(0, (opt.votes || 0) - 1) };
+              return opt;
+            });
+            updatedTotalVotes = Math.max(0, updatedTotalVotes - 1);
+            newUserVotedId = undefined;
+          } else if (isChangingVote) {
+            // Switch vote from previous option to new option
+            updatedOptions = updatedOptions.map(opt => {
+              if (opt.id === optionId) return { ...opt, votes: (opt.votes || 0) + 1 };
+              if (opt.id === currentPoll.userVotedId) return { ...opt, votes: Math.max(0, (opt.votes || 0) - 1) };
+              return opt;
+            });
+            // Total votes remains constant on vote change
+            newUserVotedId = optionId;
+          } else {
+            // First time voting
+            updatedOptions = updatedOptions.map(opt => {
+              if (opt.id === optionId) return { ...opt, votes: (opt.votes || 0) + 1 };
+              return opt;
+            });
+            updatedTotalVotes = updatedTotalVotes + 1;
+            newUserVotedId = optionId;
+          }
 
           return {
             ...post,
             poll: {
               ...currentPoll,
-              userVotedId: optionId,
-              totalVotes: currentPoll.userVotedId ? currentPoll.totalVotes : currentPoll.totalVotes + 1,
+              userVotedId: newUserVotedId,
+              totalVotes: updatedTotalVotes,
               options: updatedOptions
             }
           };
@@ -158,13 +185,36 @@ export default function PublicFeed({
       })
     );
 
-    fetch(`/api/posts/${postId}/poll`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ optionId })
-    }).catch(err => console.error('Error recording poll vote on server:', err));
+    try {
+      const res = await fetch(`/api/posts/${postId}/poll`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || ''
+        },
+        body: JSON.stringify({ optionId })
+      });
 
-    onTriggerToast('Poll vote recorded!', 'success');
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.post) {
+        setPosts(prev => 
+          prev.map(p => {
+            if (p.id === postId && data.post?.poll) {
+              return {
+                ...p,
+                poll: {
+                  ...data.post.poll,
+                  userVotedId: data.userVotedId !== undefined ? (data.userVotedId || undefined) : data.post.poll.userVotedId
+                }
+              };
+            }
+            return p;
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Error recording poll vote on server:', err);
+    }
   };
 
   // Report Handler
@@ -173,19 +223,44 @@ export default function PublicFeed({
   };
 
   // Delete Post Handler
-  const handleDeletePost = (postId: string) => {
+  const handleDeletePost = async (postId: string) => {
     if (onDeletePost) {
       onDeletePost(postId);
-    } else {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-id': currentUser?.id || ''
+        }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.success === false) {
+        if (res.status === 404 || data.error === 'POST_NOT_FOUND') {
+          setPosts(prev => {
+            const updated = prev.filter(p => p.id !== postId);
+            localStorage.setItem('incognito_posts', JSON.stringify(updated));
+            return updated;
+          });
+        }
+        onTriggerToast('Unable to delete post. Please try again.', 'error');
+        return;
+      }
+
       setPosts(prev => {
         const updated = prev.filter(p => p.id !== postId);
         localStorage.setItem('incognito_posts', JSON.stringify(updated));
         localStorage.setItem('aetheris_posts', JSON.stringify(updated));
         return updated;
       });
-      fetch(`/api/posts/${postId}`, { method: 'DELETE' })
-        .catch(err => console.error('Error deleting post on server:', err));
-      onTriggerToast('Post purged and deleted from feed.', 'info');
+      onTriggerToast('Post deleted successfully.', 'info');
+    } catch (err) {
+      console.error('Error deleting post on server:', err);
+      onTriggerToast('Unable to delete post. Please try again.', 'error');
     }
   };
 
@@ -253,7 +328,7 @@ export default function PublicFeed({
                   onClick={() => setSelectedCategory(cat.id === 'all' ? 'all' : cat.name)}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer border flex items-center gap-1.5 ${
                     isSelected 
-                      ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 border-violet-400 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)]' 
+                      ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 border-cyan-400 text-white shadow-[0_0_15px_rgba(0,217,255,0.4)]' 
                       : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/10 text-white/60 hover:text-white backdrop-blur-md'
                   }`}
                   id={`category-tab-${cat.id.toLowerCase()}`}
@@ -275,7 +350,7 @@ export default function PublicFeed({
           <button
             onClick={() => setFeedSort('latest')}
             className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              feedSort === 'latest' ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white'
+              feedSort === 'latest' ? 'bg-cyan-600 text-white shadow-sm' : 'text-white/40 hover:text-white'
             }`}
           >
             <Clock className="w-3 h-3" />
@@ -284,7 +359,7 @@ export default function PublicFeed({
           <button
             onClick={() => setFeedSort('trending')}
             className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              feedSort === 'trending' ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white'
+              feedSort === 'trending' ? 'bg-cyan-600 text-white shadow-sm' : 'text-white/40 hover:text-white'
             }`}
           >
             <Flame className="w-3 h-3 text-amber-400" />
@@ -313,8 +388,8 @@ export default function PublicFeed({
             />
           ))
         ) : (
-          <div className="p-12 rounded-3xl bg-[#0d091f]/80 border border-white/10 text-center space-y-3">
-            <Search className="w-8 h-8 text-violet-400 mx-auto opacity-50" />
+          <div className="p-12 rounded-3xl bg-[#080d1a]/80 border border-white/10 text-center space-y-3">
+            <Search className="w-8 h-8 text-cyan-400 mx-auto opacity-50" />
             <h4 className="text-sm font-bold text-white">No broadcasts found</h4>
             <p className="text-xs text-white/50 max-w-sm mx-auto">
               No posts matched your current search query or community filter. Try clearing filters or create a new post above!

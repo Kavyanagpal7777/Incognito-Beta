@@ -65,11 +65,11 @@ export default function MessagesView({ currentUser, onViewUserProfile }: Message
     <div className="h-[calc(100vh-120px)] grid grid-cols-1 md:grid-cols-3 gap-4 text-left py-2" id="messages-view-container">
       
       {/* CONVERSATIONS LIST SIDE PANEL */}
-      <div className="bg-[#0d091f]/80 border border-violet-500/20 rounded-3xl p-4 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-xl">
+      <div className="bg-[#080d1a]/80 border border-cyan-500/20 rounded-3xl p-4 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-xl">
         <div className="space-y-3">
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-violet-400" />
+              <MessageSquare className="w-4 h-4 text-cyan-400" />
               Direct Relays
             </h3>
             <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-500/30">
@@ -87,11 +87,11 @@ export default function MessagesView({ currentUser, onViewUserProfile }: Message
                   onClick={() => setActiveConvId(conv.id)}
                   className={`w-full p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
                     isActive 
-                      ? 'bg-gradient-to-r from-violet-600/30 to-indigo-600/20 border-violet-400/40 text-white shadow-md' 
+                      ? 'bg-gradient-to-r from-blue-600/30 to-cyan-600/20 border-cyan-400/40 text-white shadow-md' 
                       : 'bg-black/20 hover:bg-black/40 border-white/5 text-white/70'
                   }`}
                 >
-                  <img src={conv.peerAvatar} alt={conv.peerUsername} className="w-10 h-10 rounded-full object-cover border border-violet-400/30" />
+                  <img src={conv.peerAvatar} alt={conv.peerUsername} className="w-10 h-10 rounded-full object-cover border border-cyan-400/30" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-white truncate">@{conv.peerUsername}</h4>
@@ -107,13 +107,13 @@ export default function MessagesView({ currentUser, onViewUserProfile }: Message
 
         {/* Security Footer */}
         <div className="p-3 rounded-2xl bg-black/40 border border-white/5 text-[10px] text-white/40 flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-violet-400 flex-shrink-0" />
+          <KeyRound className="w-4 h-4 text-cyan-400 flex-shrink-0" />
           <span>Messages are encrypted with ephemeral Diffie-Hellman keys. Zero server logs.</span>
         </div>
       </div>
 
       {/* CHAT WINDOW MAIN PANEL */}
-      <div className="md:col-span-2 bg-[#0d091f]/80 border border-violet-500/20 rounded-3xl p-4 sm:p-5 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-xl">
+      <div className="md:col-span-2 bg-[#080d1a]/80 border border-cyan-500/20 rounded-3xl p-4 sm:p-5 backdrop-blur-2xl flex flex-col justify-between overflow-hidden shadow-xl">
         
         {/* Chat Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -122,11 +122,11 @@ export default function MessagesView({ currentUser, onViewUserProfile }: Message
             onClick={() => onViewUserProfile?.(activeConv.peerUsername)}
             className="flex items-center gap-3 text-left hover:opacity-85 transition-opacity cursor-pointer group/peer"
           >
-            <img src={activeConv.peerAvatar} alt={activeConv.peerUsername} className="w-9 h-9 rounded-full object-cover border border-violet-400/40 group-hover/peer:border-violet-300" />
+            <img src={activeConv.peerAvatar} alt={activeConv.peerUsername} className="w-9 h-9 rounded-full object-cover border border-cyan-400/40 group-hover/peer:border-cyan-300" />
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 group-hover/peer:text-violet-300 group-hover/peer:underline">
+              <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 group-hover/peer:text-cyan-300 group-hover/peer:underline">
                 @{activeConv.peerUsername}
-                <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
               </h3>
               <span className="text-[9.5px] text-emerald-400 font-mono flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -147,7 +147,7 @@ export default function MessagesView({ currentUser, onViewUserProfile }: Message
               >
                 <div className={`max-w-[80%] p-3.5 rounded-2xl border text-xs leading-relaxed ${
                   isSelf 
-                    ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white border-violet-400/30 shadow-md rounded-tr-none' 
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-cyan-400/30 shadow-md rounded-tr-none' 
                     : 'bg-black/40 text-white/90 border-white/10 rounded-tl-none'
                 }`}>
                   <p>{m.content}</p>
@@ -168,12 +168,12 @@ export default function MessagesView({ currentUser, onViewUserProfile }: Message
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             placeholder={`Encrypted reply to @${activeConv.peerUsername}...`}
-            className="flex-1 px-4 py-2.5 rounded-2xl bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 outline-none focus:border-violet-500"
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 outline-none focus:border-cyan-500"
           />
           <button
             type="submit"
             disabled={!messageText.trim()}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
           >
             <Send className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Send</span>

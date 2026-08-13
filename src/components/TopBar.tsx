@@ -52,7 +52,7 @@ export default function TopBar({
       time: '10m ago',
       read: false,
       icon: ShieldCheck,
-      color: 'text-violet-400'
+      color: 'text-cyan-400'
     },
     {
       id: 'n2',
@@ -99,7 +99,7 @@ export default function TopBar({
 
   return (
     <header 
-      className="sticky top-0 z-30 w-full bg-[#0B0B15]/85 backdrop-blur-2xl border-b border-violet-500/15 px-4 sm:px-6 py-3 transition-all"
+      className="sticky top-0 z-30 w-full bg-[#070B14]/85 backdrop-blur-2xl border-b border-cyan-500/15 px-4 sm:px-6 py-3 transition-all"
       id="incognito-topbar"
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
@@ -107,13 +107,13 @@ export default function TopBar({
         {/* SEARCH BAR SECTION */}
         <div className="flex-1 max-w-2xl relative" id="topbar-search-container">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-violet-400 absolute left-3.5 pointer-events-none" />
+            <Search className="w-4 h-4 text-cyan-400 absolute left-3.5 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search posts, communities or users..."
-              className="w-full pl-10 pr-10 py-2 sm:py-2.5 rounded-2xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs sm:text-sm outline-none focus:border-violet-500/60 focus:bg-black/60 focus:shadow-[0_0_20px_rgba(124,58,237,0.25)] transition-all"
+              className="w-full pl-10 pr-10 py-2 sm:py-2.5 rounded-2xl bg-[#0D1320] border border-[#1C2A3D] text-white placeholder-white/30 text-xs sm:text-sm outline-none focus:border-blue-500/60 focus:bg-[#101827] focus:shadow-[0_0_20px_rgba(22,119,255,0.25)] transition-all"
               id="topbar-search-input"
             />
             {searchQuery ? (
@@ -143,9 +143,9 @@ export default function TopBar({
               className="p-2 sm:p-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer relative"
               id="notif-trigger-btn"
             >
-              <Bell className="w-4.5 h-4.5 text-violet-300" />
+              <Bell className="w-4.5 h-4.5 text-cyan-300" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center border-2 border-[#0B0B15] shadow-[0_0_10px_rgba(244,63,94,0.6)]">
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center border-2 border-[#070B14] shadow-[0_0_10px_rgba(244,63,94,0.6)]">
                   {unreadCount}
                 </span>
               )}
@@ -159,12 +159,12 @@ export default function TopBar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0c081d]/95 border border-violet-500/30 rounded-3xl p-4 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-50 overflow-hidden"
+                  className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0D1320]/95 border border-cyan-500/30 rounded-3xl p-4 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-50 overflow-hidden"
                   id="notifications-panel"
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-white/10">
                     <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-violet-400" />
+                      <Bell className="w-4 h-4 text-cyan-400" />
                       <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                         Encrypted Alerts
                       </h4>
@@ -172,7 +172,7 @@ export default function TopBar({
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllNotificationsRead}
-                        className="text-[10px] font-bold text-violet-300 hover:underline cursor-pointer"
+                        className="text-[10px] font-bold text-cyan-300 hover:underline cursor-pointer"
                       >
                         Mark all read
                       </button>
@@ -188,7 +188,7 @@ export default function TopBar({
                           className={`p-3 rounded-2xl border transition-all flex items-start gap-3 ${
                             n.read 
                               ? 'bg-black/20 border-white/5 opacity-70' 
-                              : 'bg-violet-950/30 border-violet-500/30 shadow-[0_0_15px_rgba(124,58,237,0.15)]'
+                              : 'bg-blue-950/30 border-cyan-500/30 shadow-[0_0_15px_rgba(22,119,255,0.15)]'
                           }`}
                         >
                           <div className={`p-2 rounded-xl bg-white/5 ${n.color}`}>
@@ -223,10 +223,10 @@ export default function TopBar({
                 <img 
                   src={currentUser.avatarUrl} 
                   alt={currentUser.username} 
-                  className="w-7 h-7 rounded-full object-cover border border-violet-400/50" 
+                  className="w-7 h-7 rounded-full object-cover border border-cyan-400/50" 
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-violet-600 to-fuchsia-500 flex items-center justify-center text-xs font-bold font-display text-white border border-violet-400/50">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-xs font-bold font-display text-white border border-cyan-400/50">
                   {currentUser.username.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -243,11 +243,11 @@ export default function TopBar({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute right-0 mt-2 w-56 bg-[#0c081d]/95 border border-violet-500/30 rounded-2xl p-2 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-50 overflow-hidden"
+                  className="absolute right-0 mt-2 w-56 bg-[#0D1320]/95 border border-cyan-500/30 rounded-2xl p-2 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-50 overflow-hidden"
                   id="profile-dropdown-menu"
                 >
                   <div className="px-3 py-2 border-b border-white/10 text-left">
-                    <span className="text-[10px] text-violet-300/80 font-bold uppercase tracking-wider block">Signed in as</span>
+                    <span className="text-[10px] text-cyan-300/80 font-bold uppercase tracking-wider block">Signed in as</span>
                     <span className="text-xs font-bold text-white truncate block">@{currentUser.username}</span>
                     <div className="flex items-center gap-1 text-[9.5px] text-amber-400 mt-0.5">
                       <Zap className="w-3 h-3 fill-amber-400" />
@@ -261,9 +261,9 @@ export default function TopBar({
                         setIsProfileDropdownOpen(false);
                         onNavigateTab('profile');
                       }}
-                      className="w-full px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-violet-600/20 flex items-center gap-2 transition-colors cursor-pointer text-left"
+                      className="w-full px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-blue-600/20 flex items-center gap-2 transition-colors cursor-pointer text-left"
                     >
-                      <User className="w-3.5 h-3.5 text-violet-300" />
+                      <User className="w-3.5 h-3.5 text-cyan-300" />
                       <span>View Profile</span>
                     </button>
 
@@ -272,7 +272,7 @@ export default function TopBar({
                         setIsProfileDropdownOpen(false);
                         onOpenSettings();
                       }}
-                      className="w-full px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-violet-600/20 flex items-center gap-2 transition-colors cursor-pointer text-left"
+                      className="w-full px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-blue-600/20 flex items-center gap-2 transition-colors cursor-pointer text-left"
                     >
                       <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" />
                       <span>Security Vault</span>

@@ -91,6 +91,8 @@ export const INITIAL_ACCOUNTS: UserAccount[] = [
 export const INITIAL_POSTS: Post[] = [
   {
     id: 'post_1',
+    ownerId: 'usr_1',
+    authorUsername: 'ShadowNova',
     username: 'ShadowNova',
     userAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
     community: '💬 Confessions',
@@ -125,6 +127,8 @@ export const INITIAL_POSTS: Post[] = [
   },
   {
     id: 'post_2',
+    ownerId: 'usr_aether',
+    authorUsername: 'AetherNode',
     username: 'AetherNode',
     userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
     community: '😂 Funny',
@@ -149,6 +153,8 @@ export const INITIAL_POSTS: Post[] = [
   },
   {
     id: 'post_3',
+    ownerId: 'usr_ghost',
+    authorUsername: 'GhostProtocol',
     username: 'GhostProtocol',
     userAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
     community: '🎮 Gaming',
@@ -173,6 +179,8 @@ export const INITIAL_POSTS: Post[] = [
   },
   {
     id: 'post_4',
+    ownerId: 'usr_neon',
+    authorUsername: 'NeonOracle',
     username: 'NeonOracle',
     userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80',
     community: '🤣 Memes',
@@ -197,6 +205,8 @@ export const INITIAL_POSTS: Post[] = [
   },
   {
     id: 'post_5',
+    ownerId: 'usr_3',
+    authorUsername: 'CipherVapor',
     username: 'CipherVapor',
     userAvatar: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?auto=format&fit=crop&w=150&q=80',
     community: '💻 Technology',

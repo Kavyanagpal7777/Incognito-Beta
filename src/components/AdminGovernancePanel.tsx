@@ -197,11 +197,11 @@ export const AdminGovernancePanel: React.FC<AdminGovernancePanelProps> = ({
           onClick={() => setActiveTab('legal')}
           className={`flex items-center gap-2 px-5 py-3 border-b-2 font-medium text-sm transition ${
             activeTab === 'legal'
-              ? 'border-purple-500 text-purple-300 bg-purple-500/10'
+              ? 'border-cyan-500 text-cyan-300 bg-cyan-500/10'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Scale className="w-4 h-4 text-purple-400" /> Legal & Compliance Portal
+          <Scale className="w-4 h-4 text-cyan-400" /> Legal & Compliance Portal
         </button>
       </div>
 

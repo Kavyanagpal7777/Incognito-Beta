@@ -133,12 +133,12 @@ export default function CreateCommunityModal({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl bg-[#0d0822] border border-violet-500/30 rounded-3xl p-5 sm:p-7 shadow-[0_25px_60px_rgba(124,58,237,0.35)] z-10 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar text-left"
+        className="relative w-full max-w-2xl bg-[#080d1a] border border-cyan-500/30 rounded-3xl p-5 sm:p-7 shadow-[0_25px_60px_rgba(0,217,255,0.25)] z-10 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar text-left"
         id="create-community-modal"
       >
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 border border-violet-400/40 text-white shadow-md">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 border border-cyan-400/40 text-white shadow-md">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -184,7 +184,7 @@ export default function CreateCommunityModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-1">
               Community Name *
             </label>
             <input
@@ -193,17 +193,17 @@ export default function CreateCommunityModal({
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g. Privacy Research Lab"
-              className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs font-bold outline-none focus:border-violet-500 transition-all"
+              className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs font-bold outline-none focus:border-cyan-500 transition-all"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-1">
                 Community Handle (c/...) *
               </label>
-              <div className="flex items-center px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 focus-within:border-violet-500 transition-all">
-                <span className="text-xs font-mono font-bold text-violet-400 mr-1">c/</span>
+              <div className="flex items-center px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 focus-within:border-cyan-500 transition-all">
+                <span className="text-xs font-mono font-bold text-cyan-400 mr-1">c/</span>
                 <input
                   type="text"
                   required
@@ -216,16 +216,16 @@ export default function CreateCommunityModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-1">
                 Category *
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-bold outline-none focus:border-violet-500 cursor-pointer"
+                className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-bold outline-none focus:border-cyan-500 cursor-pointer"
               >
                 {categories.map((cat) => (
-                  <option key={cat} value={cat} className="bg-[#0d0822] text-white">
+                  <option key={cat} value={cat} className="bg-[#080d1a] text-white">
                     {cat}
                   </option>
                 ))}
@@ -234,7 +234,7 @@ export default function CreateCommunityModal({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-1">
               Description *
             </label>
             <textarea
@@ -243,13 +243,13 @@ export default function CreateCommunityModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe what your community is about..."
-              className="w-full p-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs outline-none focus:border-violet-500 transition-all resize-none"
+              className="w-full p-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs outline-none focus:border-cyan-500 transition-all resize-none"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-1">
                 Icon Image URL (Optional)
               </label>
               <input
@@ -257,11 +257,11 @@ export default function CreateCommunityModal({
                 value={iconUrl}
                 onChange={(e) => setIconUrl(e.target.value)}
                 placeholder="https://images.unsplash.com/..."
-                className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs outline-none focus:border-violet-500"
+                className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs outline-none focus:border-cyan-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-1">
                 Banner Image URL (Optional)
               </label>
               <input
@@ -269,13 +269,13 @@ export default function CreateCommunityModal({
                 value={bannerUrl}
                 onChange={(e) => setBannerUrl(e.target.value)}
                 placeholder="https://images.unsplash.com/..."
-                className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs outline-none focus:border-violet-500"
+                className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/30 text-xs outline-none focus:border-cyan-500"
               />
             </div>
           </div>
 
           <div className="pt-2 border-t border-white/10">
-            <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-2">
               Community Rules ({rules.length})
             </label>
 
@@ -316,7 +316,7 @@ export default function CreateCommunityModal({
                 <button
                   type="button"
                   onClick={handleAddRule}
-                  className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add
                 </button>
@@ -335,7 +335,7 @@ export default function CreateCommunityModal({
             <button
               type="submit"
               disabled={!isEligible || isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-xs tracking-wide shadow-[0_0_20px_rgba(124,58,237,0.4)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 text-white font-bold text-xs tracking-wide shadow-[0_0_20px_rgba(0,217,255,0.4)] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? (
                 <>

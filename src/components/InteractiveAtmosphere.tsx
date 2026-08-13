@@ -69,7 +69,7 @@ export default function InteractiveAtmosphere({ children, onMouseMoveCoords }: I
     window.addEventListener('resize', handleResize);
 
     // Color palette for tiny glowing particles
-    const colors = ['#A855F7', '#C084FC', '#818CF8', '#38BDF8', '#E879F9'];
+    const colors = ['#00D9FF', '#33E5FF', '#1677FF', '#2388FF', '#38BDF8'];
 
     const particleCount = Math.min(Math.floor(window.innerWidth / 25), 45);
     const particles: Particle[] = Array.from({ length: particleCount }, () => ({
@@ -129,16 +129,16 @@ export default function InteractiveAtmosphere({ children, onMouseMoveCoords }: I
   }, [mousePos]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#070510] text-white selection:bg-purple-500/30 selection:text-purple-200 font-sans">
+    <div className="relative w-full h-screen overflow-hidden bg-[#050811] text-white selection:bg-cyan-500/30 selection:text-cyan-200 font-sans">
       
       {/* 1. ANIMATED AURORA & MESH GRADIENT BACKDROP */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {/* Dark Base Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#090615] via-[#0d0a22] to-[#05030b]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#060a14] via-[#091122] to-[#04060c]" />
 
         {/* Floating Moving Mesh Blobs */}
         <motion.div
-          className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] max-w-[700px] max-h-[700px] rounded-full bg-gradient-to-r from-purple-700/30 via-violet-600/25 to-indigo-800/20 blur-[130px]"
+          className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] max-w-[700px] max-h-[700px] rounded-full bg-gradient-to-r from-blue-700/25 via-cyan-600/20 to-teal-800/20 blur-[130px]"
           animate={{
             x: [0, 40, -30, 0],
             y: [0, -30, 40, 0],
@@ -152,7 +152,7 @@ export default function InteractiveAtmosphere({ children, onMouseMoveCoords }: I
         />
 
         <motion.div
-          className="absolute -bottom-[20%] -right-[10%] w-[55vw] h-[55vw] max-w-[800px] max-h-[800px] rounded-full bg-gradient-to-tl from-indigo-700/30 via-purple-800/25 to-pink-900/15 blur-[140px]"
+          className="absolute -bottom-[20%] -right-[10%] w-[55vw] h-[55vw] max-w-[800px] max-h-[800px] rounded-full bg-gradient-to-tl from-cyan-700/25 via-blue-800/20 to-sky-900/15 blur-[140px]"
           animate={{
             x: [0, -50, 30, 0],
             y: [0, 40, -40, 0],
@@ -166,7 +166,7 @@ export default function InteractiveAtmosphere({ children, onMouseMoveCoords }: I
         />
 
         <motion.div
-          className="absolute top-[35%] left-[25%] w-[40vw] h-[40vw] max-w-[600px] max-h-[600px] rounded-full bg-gradient-to-tr from-fuchsia-600/15 via-violet-500/15 to-cyan-500/10 blur-[120px]"
+          className="absolute top-[35%] left-[25%] w-[40vw] h-[40vw] max-w-[600px] max-h-[600px] rounded-full bg-gradient-to-tr from-teal-600/15 via-cyan-500/15 to-blue-500/10 blur-[120px]"
           animate={{
             x: [0, 60, -40, 0],
             y: [0, 50, -30, 0],
@@ -180,7 +180,7 @@ export default function InteractiveAtmosphere({ children, onMouseMoveCoords }: I
         />
 
         {/* Soft Radial Glow Center */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(168,85,247,0.08)_0%,transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,217,255,0.06)_0%,transparent_70%)]" />
 
         {/* Subtle Noise Texture Overlay */}
         <div 
@@ -199,7 +199,7 @@ export default function InteractiveAtmosphere({ children, onMouseMoveCoords }: I
 
       {/* 3. SMOOTH CURSOR FOLLOW GLOW ORB */}
       <motion.div
-        className="fixed w-96 h-96 -ml-48 -mt-48 rounded-full bg-gradient-to-r from-purple-500/15 via-violet-500/12 to-cyan-500/10 blur-[80px] pointer-events-none z-[2]"
+        className="fixed w-96 h-96 -ml-48 -mt-48 rounded-full bg-gradient-to-r from-blue-500/15 via-cyan-500/12 to-teal-500/10 blur-[80px] pointer-events-none z-[2]"
         style={{
           x: smoothX,
           y: smoothY,

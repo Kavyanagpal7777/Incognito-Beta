@@ -59,16 +59,20 @@ export interface PostPoll {
   options: PollOption[];
   totalVotes: number;
   userVotedId?: string;
+  votesByUser?: Record<string, string>;
 }
 
 export interface Post {
   id: string;
+  ownerId?: string;
+  authorUsername?: string;
   username: string; // ONLY public username
   userAvatar?: string;
   community: string; // e.g. 'c/Privacy', 'c/Cyberpunk'
   title?: string;
   content: string;
   imageUrl?: string;
+  videoUrl?: string;
   timestamp: string;
   upvotes: number;
   comments: Comment[];

@@ -700,25 +700,81 @@ app.post("/api/ai-assist-post", publicApiRateLimiter, async (req, res) => {
 
 // GET /api/posts - Fetch all public feed posts across all users
 app.get("/api/posts", (req, res) => {
-  res.json({ success: true, posts: postsStore });
+  let userId: string | undefined;
+  const sessionId = getCookie(req, "incognito_session");
+  if (sessionId) {
+    const session = sessionsStore.get(sessionId);
+    if (session && Date.now() < session.expiresAt) {
+      userId = session.userId;
+    }
+  }
+  if (!userId) {
+    userId = (req.headers["x-user-id"] as string) || (req.query.userId as string);
+  }
+
+  const posts = postsStore.map(post => {
+    if (post.poll) {
+      const userVotedId = userId && post.poll.votesByUser 
+        ? post.poll.votesByUser[userId] 
+        : post.poll.userVotedId;
+      return {
+        ...post,
+        poll: {
+          ...post.poll,
+          userVotedId
+        }
+      };
+    }
+    return post;
+  });
+
+  res.json({ success: true, posts });
 });
 
 // POST /api/posts - Publish new post to public feed for all users
-app.post("/api/posts", publicApiRateLimiter, (req, res) => {
+app.post("/api/posts", publicApiRateLimiter, (req: any, res) => {
   try {
     const postData = req.body;
-    if (!postData || (!postData.content && !postData.imageUrl && !postData.title)) {
+    if (!postData || (!postData.content && !postData.imageUrl && !postData.videoUrl && !postData.title)) {
       return res.status(400).json({ success: false, error: "Post content or media is required." });
     }
 
+    let authenticatedUserId: string | undefined;
+    let authenticatedUsername: string | undefined;
+
+    const sessionId = getCookie(req, "incognito_session");
+    if (sessionId) {
+      const session = sessionsStore.get(sessionId);
+      if (session && Date.now() < session.expiresAt) {
+        authenticatedUserId = session.userId;
+      }
+    }
+
+    if (!authenticatedUserId) {
+      authenticatedUserId = req.headers["x-user-id"] || req.body?.ownerId || req.body?.userId;
+    }
+
+    if (authenticatedUserId) {
+      const foundUser = accountsStore.find(a => a.id === authenticatedUserId);
+      if (foundUser) {
+        authenticatedUsername = foundUser.username;
+      }
+    }
+
+    const ownerId = authenticatedUserId || postData.ownerId || 'usr_guest';
+    const authorUsername = authenticatedUsername || postData.authorUsername || postData.username || 'Anonymous_Ghost';
+
     const newPost = {
       id: postData.id || `post_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      ownerId,
+      authorUsername,
       username: postData.username || 'Anonymous_Ghost',
       userAvatar: postData.userAvatar,
       community: postData.community || 'c/Privacy',
       title: postData.title,
       content: postData.content || '',
       imageUrl: postData.imageUrl,
+      videoUrl: postData.videoUrl,
       timestamp: postData.timestamp || 'Just now',
       upvotes: typeof postData.upvotes === 'number' ? postData.upvotes : 1,
       isUpvoted: Boolean(postData.isUpvoted),
@@ -774,37 +830,183 @@ app.post("/api/posts/:id/comment", publicApiRateLimiter, (req, res) => {
   return res.json({ success: true, post, comment: commentObj });
 });
 
-// POST /api/posts/:id/poll - Record poll vote in network store
-app.post("/api/posts/:id/poll", publicApiRateLimiter, (req, res) => {
+// POST /api/posts/:id/poll - Record/toggle poll vote in network store
+app.post("/api/posts/:id/poll", publicApiRateLimiter, authenticateUser, (req: any, res) => {
   const { id } = req.params;
   const { optionId } = req.body;
+  const authenticatedUser = req.user;
+
+  if (!authenticatedUser) {
+    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "User authentication required" });
+  }
+
   const post = postsStore.find(p => p.id === id);
   if (!post || !post.poll) {
     return res.status(404).json({ success: false, error: "Post or poll not found" });
   }
 
-  const currentPoll = post.poll;
-  if (currentPoll.userVotedId !== optionId) {
-    currentPoll.options = currentPoll.options.map((opt: any) => {
-      if (opt.id === optionId) return { ...opt, votes: (opt.votes || 0) + 1 };
-      if (opt.id === currentPoll.userVotedId) return { ...opt, votes: Math.max(0, (opt.votes || 0) - 1) };
-      return opt;
-    });
-
-    if (!currentPoll.userVotedId) {
-      currentPoll.totalVotes = (currentPoll.totalVotes || 0) + 1;
-    }
-    currentPoll.userVotedId = optionId;
+  if (!optionId || typeof optionId !== 'string') {
+    return res.status(400).json({ success: false, error: "Option ID is required" });
   }
 
-  return res.json({ success: true, post });
+  const currentPoll = post.poll;
+  if (!currentPoll.options || !Array.isArray(currentPoll.options)) {
+    return res.status(404).json({ success: false, error: "Poll options not found" });
+  }
+
+  const targetOption = currentPoll.options.find((opt: any) => opt.id === optionId);
+  if (!targetOption) {
+    return res.status(404).json({ success: false, error: "Option not found in poll" });
+  }
+
+  if (!currentPoll.votesByUser) {
+    currentPoll.votesByUser = {};
+    if (currentPoll.userVotedId) {
+      currentPoll.votesByUser['usr_1'] = currentPoll.userVotedId;
+    }
+  }
+
+  const userId = authenticatedUser.id;
+  const previousVotedOptionId = currentPoll.votesByUser[userId];
+
+  let action: 'voted' | 'unvoted' | 'changed';
+
+  if (previousVotedOptionId === optionId) {
+    // TOGGLE OFF: User already voted for this exact option -> remove their vote
+    targetOption.votes = Math.max(0, (targetOption.votes || 0) - 1);
+    currentPoll.totalVotes = Math.max(0, (currentPoll.totalVotes || 0) - 1);
+    delete currentPoll.votesByUser[userId];
+    action = 'unvoted';
+  } else if (previousVotedOptionId) {
+    // CHANGE VOTE: User switched from previous option to new option (Single choice poll)
+    const previousOption = currentPoll.options.find((opt: any) => opt.id === previousVotedOptionId);
+    if (previousOption) {
+      previousOption.votes = Math.max(0, (previousOption.votes || 0) - 1);
+    }
+    targetOption.votes = (targetOption.votes || 0) + 1;
+    // Total votes remains constant on vote change
+    currentPoll.votesByUser[userId] = optionId;
+    action = 'changed';
+  } else {
+    // NEW VOTE: User has not voted yet
+    targetOption.votes = (targetOption.votes || 0) + 1;
+    currentPoll.totalVotes = (currentPoll.totalVotes || 0) + 1;
+    currentPoll.votesByUser[userId] = optionId;
+    action = 'voted';
+  }
+
+  const activeUserVote = currentPoll.votesByUser[userId] || null;
+
+  // Return sanitized post object with caller's userVotedId
+  const sanitizedPost = {
+    ...post,
+    poll: {
+      ...currentPoll,
+      userVotedId: activeUserVote || undefined
+    }
+  };
+
+  return res.json({ 
+    success: true, 
+    post: sanitizedPost, 
+    action, 
+    userVotedId: activeUserVote,
+    totalVotes: currentPoll.totalVotes 
+  });
 });
 
-// DELETE /api/posts/:id - Purge post from network store
-app.delete("/api/posts/:id", publicApiRateLimiter, (req, res) => {
-  const { id } = req.params;
-  postsStore = postsStore.filter(p => p.id !== id);
-  return res.json({ success: true, deletedId: id });
+// Helper to check if a user has staff moderation / post deletion permissions
+function hasDeletePostPermission(user: any): boolean {
+  if (!user || !user.id) return false;
+  if (user.email && user.email.toLowerCase() === 'kavyanagpal0005@gmail.com') return true;
+  const role = String(user.role || '').toLowerCase().replace(/[\s_-]+/g, '_');
+  const allowedRoles = ['owner', 'super_admin', 'admin', 'senior_moderator', 'moderator'];
+  return allowedRoles.includes(role);
+}
+
+// DELETE /api/posts/:id - Role-based post deletion with IDOR protection & Moderation Audit Logging
+app.delete("/api/posts/:id", publicApiRateLimiter, authenticateUser, (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const authenticatedUser = req.user;
+
+    if (!authenticatedUser || !authenticatedUser.id) {
+      return res.status(401).json({
+        success: false,
+        error: "UNAUTHORIZED"
+      });
+    }
+
+    const postIndex = postsStore.findIndex(p => p.id === id);
+    if (postIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        error: "POST_NOT_FOUND"
+      });
+    }
+
+    const post = postsStore[postIndex];
+
+    // Ownership check: must match authenticated user's ID or author username
+    const isOwner = Boolean(
+      (post.ownerId && post.ownerId === authenticatedUser.id) ||
+      (post.authorUsername && post.authorUsername === authenticatedUser.username) ||
+      (!post.ownerId && !post.authorUsername && post.username === authenticatedUser.username)
+    );
+
+    // Staff moderation check: user role has delete_post permission
+    const isStaffAuthorized = hasDeletePostPermission(authenticatedUser);
+
+    if (!isOwner && !isStaffAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN"
+      });
+    }
+
+    // Delete post from postsStore
+    const [deletedPost] = postsStore.splice(postIndex, 1);
+
+    // If deleted by staff/moderator on another user's post, create audit record
+    if (!isOwner && isStaffAuthorized) {
+      const reason = req.body?.reason || (req.query?.reason as string) || "Moderation Action: Post removed by staff.";
+      const logEntry = {
+        id: `log_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        actorId: authenticatedUser.id,
+        memberId: authenticatedUser.id,
+        actorUsername: authenticatedUser.username,
+        role: authenticatedUser.role || (authenticatedUser.email === 'kavyanagpal0005@gmail.com' ? 'owner' : 'moderator'),
+        action: 'Delete Post (Moderation)',
+        targetResource: `Post #${id}`,
+        postId: id,
+        postOwnerId: deletedPost?.ownerId || deletedPost?.authorUsername || 'unknown',
+        targetOwnerId: deletedPost?.ownerId || deletedPost?.authorUsername || 'unknown',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        ipAddress: req.ip || authenticatedUser.ipAddress || "172.56.21.144",
+        deviceInfo: req.headers["user-agent"] || "Staff Console",
+        details: reason
+      };
+
+      if (typeof auditLogsStore !== 'undefined' && Array.isArray(auditLogsStore)) {
+        auditLogsStore.unshift(logEntry);
+      }
+    }
+
+    // Clean up any associated reports
+    if (typeof reportsStore !== 'undefined' && Array.isArray(reportsStore)) {
+      reportsStore = reportsStore.filter((r: any) => r.postId !== id && r.targetPostId !== id);
+    }
+
+    return res.status(200).json({
+      success: true
+    });
+  } catch (err: any) {
+    console.error("Error in post deletion:", err);
+    return res.status(500).json({
+      success: false,
+      error: "SERVER_ERROR"
+    });
+  }
 });
 
 // Procedural username list fallback generator
@@ -957,7 +1159,7 @@ let accountsStore: UserAccount[] = [
     loginMethod: 'Email',
     deviceInfo: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
     ipAddress: '192.168.1.1',
-    role: 'user',
+    role: 'moderator',
     twoFactorEnabled: true
   },
   {
@@ -1126,6 +1328,8 @@ let auditLogsStore = [
 let postsStore: any[] = [
   {
     id: 'post_1',
+    ownerId: 'usr_1',
+    authorUsername: 'ShadowNova',
     username: 'ShadowNova',
     userAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
     community: '💬 Confessions',
@@ -1160,6 +1364,8 @@ let postsStore: any[] = [
   },
   {
     id: 'post_2',
+    ownerId: 'usr_aether',
+    authorUsername: 'AetherNode',
     username: 'AetherNode',
     userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
     community: '😂 Funny',
@@ -1184,6 +1390,8 @@ let postsStore: any[] = [
   },
   {
     id: 'post_3',
+    ownerId: 'usr_ghost',
+    authorUsername: 'GhostProtocol',
     username: 'GhostProtocol',
     userAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
     community: '🎮 Gaming',
@@ -1208,6 +1416,8 @@ let postsStore: any[] = [
   },
   {
     id: 'post_4',
+    ownerId: 'usr_neon',
+    authorUsername: 'NeonOracle',
     username: 'NeonOracle',
     userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80',
     community: '🤣 Memes',
@@ -1232,6 +1442,8 @@ let postsStore: any[] = [
   },
   {
     id: 'post_5',
+    ownerId: 'usr_3',
+    authorUsername: 'CipherVapor',
     username: 'CipherVapor',
     userAvatar: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?auto=format&fit=crop&w=150&q=80',
     community: '💻 Technology',
@@ -1548,7 +1760,7 @@ accountsStore = accountsStore.map((acc) => {
 });
 
 // AUTHENTICATION MIDDLEWARE
-const authenticateUser = (req: any, res: any, next: any) => {
+function authenticateUser(req: any, res: any, next: any) {
   let userId: string | undefined;
 
   const sessionId = getCookie(req, "incognito_session");
@@ -1584,10 +1796,10 @@ const authenticateUser = (req: any, res: any, next: any) => {
 
   req.user = user;
   next();
-};
+}
 
 // ADMIN AUTHORIZATION MIDDLEWARE
-const verifyAdmin = (req: any, res: any, next: any) => {
+function verifyAdmin(req: any, res: any, next: any) {
   if (!req.user) {
     return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Unauthorized" });
   }
@@ -1600,7 +1812,7 @@ const verifyAdmin = (req: any, res: any, next: any) => {
     });
   }
   next();
-};
+}
 
 // -------------------------------------------------------------------------
 // USER CHECK & CURRENT SESSION ENDPOINTS

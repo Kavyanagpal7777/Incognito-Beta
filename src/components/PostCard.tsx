@@ -57,6 +57,28 @@ export default function PostCard({
   const [newCommentText, setNewCommentText] = useState('');
   const [showImageLightbox, setShowImageLightbox] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Check if the current user is the owner of this post
+  const isOwner = Boolean(
+    currentUser && (
+      (post.ownerId && post.ownerId === currentUser.id) ||
+      (post.authorUsername && post.authorUsername === currentUser.username) ||
+      (!post.ownerId && !post.authorUsername && post.username === currentUser.username)
+    )
+  );
+
+  // Check if the user has moderator / admin privileges
+  const userRole = (currentUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '_');
+  const isModeratorOrAdmin = Boolean(
+    currentUser && (
+      currentUser.email?.toLowerCase() === 'kavyanagpal0005@gmail.com' ||
+      ['owner', 'super_admin', 'admin', 'senior_moderator', 'moderator'].includes(userRole)
+    )
+  );
+
+  const canDelete = Boolean(isOwner || isModeratorOrAdmin);
 
   // Poll state
   const poll = post.poll;
@@ -79,11 +101,11 @@ export default function PostCard({
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.3 }}
-      className="bg-[#0d091f]/80 hover:bg-[#0e0a24]/90 border border-violet-500/20 hover:border-violet-500/40 rounded-3xl p-5 shadow-[0_10px_35px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_45px_rgba(124,58,237,0.2)] backdrop-blur-2xl relative overflow-hidden transition-all duration-300 group my-4 text-left"
+      className="bg-[#0D1320]/80 hover:bg-[#101827]/90 border border-cyan-500/20 hover:border-cyan-500/40 rounded-3xl p-5 shadow-[0_10px_35px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_45px_rgba(22,119,255,0.2)] backdrop-blur-2xl relative overflow-hidden transition-all duration-300 group my-4 text-left"
       id={`post-card-${post.id}`}
     >
       {/* Top Refraction Beam Accent */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent pointer-events-none group-hover:via-violet-400/60 transition-colors" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent pointer-events-none group-hover:via-cyan-400/60 transition-colors" />
 
       {/* POST HEADER: COMMUNITY, USER, TIMESTAMP, SHIELD BADGE & MENU */}
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -99,28 +121,28 @@ export default function PostCard({
               <img 
                 src={post.userAvatar} 
                 alt={post.username} 
-                className="w-10 h-10 rounded-full object-cover border border-violet-400/40 shadow-sm group-hover/avatar:border-violet-300 transition-all"
+                className="w-10 h-10 rounded-full object-cover border border-cyan-400/40 shadow-sm group-hover/avatar:border-cyan-300 transition-all"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-700 via-purple-600 to-indigo-600 flex items-center justify-center font-display font-bold text-white border border-violet-400/40 text-xs shadow-sm group-hover/avatar:border-violet-300 transition-all">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-700 via-blue-600 to-cyan-500 flex items-center justify-center font-display font-bold text-white border border-cyan-400/40 text-xs shadow-sm group-hover/avatar:border-cyan-300 transition-all">
                 {post.username.charAt(0).toUpperCase()}
               </div>
             )}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#0c081d] border border-violet-400 flex items-center justify-center">
-              <Lock className="w-2 h-2 text-violet-300" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#0D1320] border border-cyan-400 flex items-center justify-center">
+              <Lock className="w-2 h-2 text-cyan-300" />
             </div>
           </button>
 
           {/* User & Community Info */}
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded-md bg-violet-500/15 border border-violet-500/30 text-violet-300 text-[10.5px] font-extrabold uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded-md bg-blue-500/15 border border-cyan-500/30 text-cyan-300 text-[10.5px] font-extrabold uppercase tracking-wider">
                 {post.community || 'c/Privacy'}
               </span>
               <button
                 type="button"
                 onClick={() => onViewUserProfile?.(post.username)}
-                className="text-xs font-bold text-white hover:text-violet-300 transition-colors cursor-pointer hover:underline"
+                className="text-xs font-bold text-white hover:text-cyan-300 transition-colors cursor-pointer hover:underline"
               >
                 @{post.username}
               </button>
@@ -167,7 +189,7 @@ export default function PostCard({
                 initial={{ opacity: 0, scale: 0.9, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                className="absolute right-0 mt-1 w-40 bg-[#0c081d] border border-violet-500/30 rounded-xl p-1 shadow-2xl z-20 text-xs"
+                className="absolute right-0 mt-1 w-40 bg-[#0D1320] border border-cyan-500/30 rounded-xl p-1 shadow-2xl z-20 text-xs"
               >
                 <button
                   onClick={() => {
@@ -175,7 +197,7 @@ export default function PostCard({
                     onTriggerToast('Post text copied to clipboard.', 'info');
                     setShowMenu(false);
                   }}
-                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-white/80 hover:bg-violet-600/20 hover:text-white transition-colors"
+                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-white/80 hover:bg-blue-600/20 hover:text-white transition-colors"
                 >
                   Copy Text
                 </button>
@@ -188,18 +210,18 @@ export default function PostCard({
                 >
                   Report Post
                 </button>
-                {onDeletePost && (
+                {canDelete && onDeletePost && (
                   <button
+                    type="button"
                     onClick={() => {
-                      if (window.confirm('Delete this post permanently from the network?')) {
-                        onDeletePost(post.id);
-                        setShowMenu(false);
-                      }
+                      setShowDeleteConfirm(true);
+                      setShowMenu(false);
                     }}
-                    className="w-full px-2.5 py-1.5 rounded-lg text-left text-rose-400 hover:bg-rose-500/20 transition-colors font-bold flex items-center gap-1.5 mt-0.5 border-t border-white/10 pt-1.5"
+                    className="w-full px-2.5 py-1.5 rounded-lg text-left text-rose-400 hover:bg-rose-500/20 transition-colors font-bold flex items-center gap-1.5 mt-0.5 border-t border-white/10 pt-1.5 cursor-pointer"
+                    id={`btn-delete-post-${post.id}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Post</span>
+                    <span>{!isOwner && isModeratorOrAdmin ? 'Delete Post (Moderation)' : 'Delete Post'}</span>
                   </button>
                 )}
               </motion.div>
@@ -233,7 +255,7 @@ export default function PostCard({
           />
           <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
             <span className="px-3 py-1.5 rounded-xl bg-black/60 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 backdrop-blur-md">
-              <Eye className="w-3.5 h-3.5 text-violet-300" /> Expand View
+              <Eye className="w-3.5 h-3.5 text-cyan-300" /> Expand View
             </span>
           </div>
         </div>
@@ -241,10 +263,10 @@ export default function PostCard({
 
       {/* POLL COMPONENT IF PRESENT */}
       {poll && (
-        <div className="p-4 rounded-2xl bg-black/30 border border-violet-500/20 my-3 space-y-2.5">
-          <div className="flex items-center justify-between text-xs font-bold text-violet-300 mb-1">
+        <div className="p-4 rounded-2xl bg-black/30 border border-cyan-500/20 my-3 space-y-2.5">
+          <div className="flex items-center justify-between text-xs font-bold text-cyan-300 mb-1">
             <span className="flex items-center gap-1.5">
-              <BarChart2 className="w-4 h-4 text-violet-400" />
+              <BarChart2 className="w-4 h-4 text-cyan-400" />
               Community Poll
             </span>
             <span className="text-[10px] text-white/40">{poll.totalVotes} votes</span>
@@ -260,16 +282,18 @@ export default function PostCard({
               return (
                 <button
                   key={opt.id}
+                  id={`btn-poll-option-${post.id}-${opt.id}`}
+                  type="button"
                   onClick={() => onVotePoll && onVotePoll(post.id, opt.id)}
                   className={`w-full p-2.5 rounded-xl border text-left relative overflow-hidden transition-all cursor-pointer ${
                     isSelected
-                      ? 'border-violet-400/60 bg-violet-600/20 text-white font-bold'
+                      ? 'border-cyan-400/60 bg-blue-600/20 text-white font-bold'
                       : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06] text-white/80'
                   }`}
                 >
                   {/* Percentage Vote Fill Bar */}
                   <div 
-                    className="absolute left-0 top-0 bottom-0 bg-violet-500/25 transition-all duration-500"
+                    className="absolute left-0 top-0 bottom-0 bg-cyan-500/25 transition-all duration-500"
                     style={{ width: `${percentage}%` }}
                   />
                   <div className="relative z-10 flex items-center justify-between text-xs">
@@ -277,7 +301,7 @@ export default function PostCard({
                       {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                       {opt.text}
                     </span>
-                    <span className="font-mono text-[11px] font-bold text-violet-300">{percentage}%</span>
+                    <span className="font-mono text-[11px] font-bold text-cyan-300">{percentage}%</span>
                   </div>
                 </button>
               );
@@ -292,7 +316,7 @@ export default function PostCard({
           {post.tags.map((tag, idx) => (
             <span 
               key={idx}
-              className="px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-violet-500/10 border border-white/5 hover:border-violet-500/20 text-[10px] font-mono text-white/50 hover:text-violet-300 transition-all cursor-pointer"
+              className="px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-blue-500/10 border border-white/5 hover:border-cyan-500/20 text-[10px] font-mono text-white/50 hover:text-cyan-300 transition-all cursor-pointer"
             >
               #{tag}
             </span>
@@ -310,12 +334,12 @@ export default function PostCard({
           onClick={() => onUpvote(post.id)}
           className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
             post.isUpvoted 
-              ? 'bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 border-violet-400/50 text-violet-200 shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
+              ? 'bg-gradient-to-r from-blue-600/30 to-cyan-600/30 border-cyan-400/50 text-cyan-200 shadow-[0_0_15px_rgba(0,217,255,0.3)]' 
               : 'bg-white/[0.02] hover:bg-white/[0.08] border-white/10 text-white/60 hover:text-white'
           }`}
           id={`upvote-btn-${post.id}`}
         >
-          <ArrowUp className={`w-3.5 h-3.5 ${post.isUpvoted ? 'text-violet-300 fill-violet-300' : ''}`} />
+          <ArrowUp className={`w-3.5 h-3.5 ${post.isUpvoted ? 'text-cyan-300 fill-cyan-300' : ''}`} />
           <span>{post.upvotes}</span>
         </motion.button>
 
@@ -326,7 +350,7 @@ export default function PostCard({
           onClick={() => setShowComments(!showComments)}
           className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
             showComments 
-              ? 'bg-violet-500/20 border-violet-400/40 text-violet-200' 
+              ? 'bg-blue-500/20 border-cyan-400/40 text-cyan-200' 
               : 'bg-white/[0.02] hover:bg-white/[0.08] border-white/10 text-white/60 hover:text-white'
           }`}
           id={`comments-btn-${post.id}`}
@@ -396,11 +420,11 @@ export default function PostCard({
                       <button
                         type="button"
                         onClick={() => onViewUserProfile?.(comment.username)}
-                        className="text-xs font-bold text-violet-300 hover:text-violet-200 flex items-center gap-1 cursor-pointer hover:underline"
+                        className="text-xs font-bold text-cyan-300 hover:text-cyan-200 flex items-center gap-1 cursor-pointer hover:underline"
                       >
                         @{comment.username}
                         {comment.username === currentUser.username && (
-                          <span className="text-[8px] bg-violet-500/20 px-1 rounded text-violet-200">You</span>
+                          <span className="text-[8px] bg-blue-500/20 px-1 rounded text-cyan-200">You</span>
                         )}
                       </button>
                       <span className="text-[9px] text-white/30">{comment.timestamp}</span>
@@ -424,13 +448,13 @@ export default function PostCard({
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
                 placeholder={`Comment as @${currentUser.username}...`}
-                className="flex-1 px-3.5 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 outline-none focus:border-violet-500/60"
+                className="flex-1 px-3.5 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 outline-none focus:border-cyan-500/60"
                 maxLength={250}
               />
               <button
                 type="submit"
                 disabled={!newCommentText.trim()}
-                className="px-3 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                className="px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-40"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
@@ -451,16 +475,93 @@ export default function PostCard({
           >
             <button
               onClick={() => setShowImageLightbox(false)}
-              className="absolute top-6 right-6 p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
+              className="absolute top-6 right-6 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 cursor-pointer"
             >
               <X className="w-6 h-6" />
             </button>
             <img 
               src={post.imageUrl} 
               alt="Expanded media" 
-              className="max-w-full max-h-[85vh] rounded-2xl border border-violet-500/40 shadow-2xl object-contain" 
+              className="max-w-full max-h-[85vh] rounded-2xl border border-cyan-500/40 shadow-2xl object-contain" 
             />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* DELETE POST CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isDeleting) setShowDeleteConfirm(false);
+              }}
+              className="fixed inset-0 bg-[#070B14]/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            {/* Confirmation Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-[#0D1320] border border-rose-500/30 rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(244,63,94,0.15)] z-10 space-y-4 text-left"
+              id="delete-post-confirm-modal"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-wide">
+                    {!isOwner && isModeratorOrAdmin
+                      ? "Delete this post as a moderator?"
+                      : "Delete this post?"}
+                  </h3>
+                  <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                    {!isOwner && isModeratorOrAdmin
+                      ? "This moderation action will be recorded in staff audit logs and the post permanently removed from the feed."
+                      : "This action cannot be undone. This post will be permanently removed from the feed."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-semibold transition-colors cursor-pointer border border-white/10"
+                  id="btn-cancel-delete-post"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (onDeletePost) {
+                      setIsDeleting(true);
+                      try {
+                        await onDeletePost(post.id);
+                      } finally {
+                        setIsDeleting(false);
+                        setShowDeleteConfirm(false);
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold transition-all shadow-[0_0_15px_rgba(244,63,94,0.4)] cursor-pointer flex items-center gap-1.5"
+                  id="btn-confirm-delete-post"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

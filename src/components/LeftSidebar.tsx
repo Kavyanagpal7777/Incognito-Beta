@@ -78,14 +78,14 @@ export default function LeftSidebar({
                 <h1 className="font-display font-extrabold text-lg tracking-widest text-white uppercase">
                   INCOGNITO
                 </h1>
-                <span className="w-2 h-2 rounded-full bg-violet-400 shadow-[0_0_10px_#a855f7] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00d9ff] animate-pulse" />
               </div>
-              <p className="text-[10px] font-medium text-violet-300/80 tracking-wider">
+              <p className="text-[10px] font-medium text-cyan-300/80 tracking-wider">
                 Anonymous. Honest. Unfiltered.
               </p>
             </div>
           </div>
-          <div className="absolute right-0 top-2 px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-[8px] font-bold text-violet-300 uppercase tracking-widest">
+          <div className="absolute right-0 top-2 px-2 py-0.5 rounded-full bg-blue-500/10 border border-cyan-500/20 text-[8px] font-bold text-cyan-300 uppercase tracking-widest">
             v2.6 SECURE
           </div>
         </div>
@@ -110,8 +110,8 @@ export default function LeftSidebar({
                 whileTap={{ scale: 0.98 }}
                 className={`w-full px-4 py-3 rounded-2xl flex items-center justify-between text-xs font-semibold transition-all duration-200 cursor-pointer relative group overflow-hidden ${
                   isActive
-                    ? 'bg-gradient-to-r from-violet-600/30 via-purple-600/20 to-indigo-600/10 border border-violet-500/40 text-white shadow-[0_0_20px_rgba(124,58,237,0.25)]'
-                    : 'text-white/60 hover:text-white bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-violet-500/20'
+                    ? 'bg-gradient-to-r from-blue-600/30 via-cyan-600/20 to-sky-600/10 border border-cyan-500/40 text-white shadow-[0_0_20px_rgba(22,119,255,0.25)]'
+                    : 'text-white/60 hover:text-white bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-cyan-500/20'
                 }`}
                 id={`sidebar-nav-${item.id}`}
               >
@@ -119,7 +119,7 @@ export default function LeftSidebar({
                 {isActive && (
                   <motion.div 
                     layoutId="active-indicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-violet-400 via-fuchsia-400 to-indigo-400 rounded-r-full shadow-[0_0_12px_#c084fc]"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-blue-400 via-cyan-400 to-sky-400 rounded-r-full shadow-[0_0_12px_#00d9ff]"
                   />
                 )}
 
@@ -129,8 +129,8 @@ export default function LeftSidebar({
                 <div className="flex items-center gap-3 z-10">
                   <div className={`p-2 rounded-xl transition-all ${
                     isActive 
-                      ? 'bg-violet-500/30 text-violet-200 border border-violet-400/30 shadow-[0_0_10px_rgba(168,85,247,0.3)]' 
-                      : 'bg-white/5 text-white/50 group-hover:text-violet-300 group-hover:bg-violet-500/10'
+                      ? 'bg-blue-500/30 text-cyan-200 border border-cyan-400/30 shadow-[0_0_10px_rgba(0,217,255,0.3)]' 
+                      : 'bg-white/5 text-white/50 group-hover:text-cyan-300 group-hover:bg-blue-500/10'
                   }`}>
                     <Icon className="w-4 h-4" />
                   </div>
@@ -140,7 +140,7 @@ export default function LeftSidebar({
                 {/* Optional Badge or Count */}
                 <div className="flex items-center gap-1.5 z-10">
                   {'badge' in item && item.badge && (
-                    <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 border border-violet-400/30 text-[9px] font-extrabold text-violet-300 uppercase tracking-widest shadow-sm">
+                    <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-500/30 to-cyan-500/30 border border-cyan-400/30 text-[9px] font-extrabold text-cyan-300 uppercase tracking-widest shadow-sm">
                       {item.badge}
                     </span>
                   )}
@@ -149,7 +149,7 @@ export default function LeftSidebar({
                       {item.count}
                     </span>
                   ) : null}
-                  <ChevronRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-violet-300 opacity-100' : 'text-white/20 opacity-0 group-hover:opacity-100'}`} />
+                  <ChevronRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-cyan-300 opacity-100' : 'text-white/20 opacity-0 group-hover:opacity-100'}`} />
                 </div>
               </motion.button>
             );
@@ -163,11 +163,11 @@ export default function LeftSidebar({
         {/* LOGGED IN USER GLASS CARD */}
         <div 
           onClick={() => setActiveTab('profile')}
-          className="p-3.5 rounded-2xl bg-gradient-to-b from-white/[0.04] to-black/30 border border-violet-500/20 backdrop-blur-xl relative overflow-hidden group cursor-pointer hover:border-violet-500/40 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+          className="p-3.5 rounded-2xl bg-gradient-to-b from-white/[0.04] to-black/30 border border-cyan-500/20 backdrop-blur-xl relative overflow-hidden group cursor-pointer hover:border-cyan-500/40 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
           id="user-profile-glass-card"
         >
           {/* Subtle Ambient Glow inside card */}
-          <div className="absolute -top-10 -right-10 w-24 h-24 bg-violet-600/20 rounded-full blur-xl group-hover:bg-violet-500/30 transition-all pointer-events-none" />
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-600/20 rounded-full blur-xl group-hover:bg-cyan-500/30 transition-all pointer-events-none" />
 
           <div className="flex items-center gap-3 relative z-10">
             {/* Circular Avatar */}
@@ -176,15 +176,15 @@ export default function LeftSidebar({
                 <img 
                   src={currentUser.avatarUrl} 
                   alt={currentUser.username}
-                  className="w-10 h-10 rounded-full object-cover border-2 border-violet-500/40 shadow-[0_0_15px_rgba(124,58,237,0.3)] group-hover:scale-105 transition-transform" 
+                  className="w-10 h-10 rounded-full object-cover border-2 border-cyan-500/40 shadow-[0_0_15px_rgba(22,119,255,0.3)] group-hover:scale-105 transition-transform" 
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-600 via-purple-600 to-indigo-500 flex items-center justify-center font-bold font-display text-white border-2 border-violet-400/40 text-sm shadow-[0_0_15px_rgba(124,58,237,0.3)]">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-500 flex items-center justify-center font-bold font-display text-white border-2 border-cyan-400/40 text-sm shadow-[0_0_15px_rgba(22,119,255,0.3)]">
                   {currentUser.username.charAt(0).toUpperCase()}
                 </div>
               )}
               {/* Shield Status Dot */}
-              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#0d091e] border border-emerald-400 flex items-center justify-center" title="Identity Isolated">
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#070B14] border border-emerald-400 flex items-center justify-center" title="Identity Isolated">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
               </div>
             </div>
@@ -192,12 +192,12 @@ export default function LeftSidebar({
             {/* Username & Karma */}
             <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center gap-1">
-                <h4 className="text-xs font-bold text-white truncate group-hover:text-violet-200 transition-colors">
+                <h4 className="text-xs font-bold text-white truncate group-hover:text-cyan-200 transition-colors">
                   {isAnonymousMode ? 'Anonymous Ghost' : currentUser.username}
                 </h4>
-                <ShieldCheck className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
               </div>
-              <p className="text-[10.5px] font-mono text-violet-300/80 flex items-center gap-1 mt-0.5">
+              <p className="text-[10.5px] font-mono text-cyan-300/80 flex items-center gap-1 mt-0.5">
                 <Zap className="w-3 h-3 text-amber-400 fill-amber-400" />
                 <span>{(currentUser.karma || 12480).toLocaleString()} Karma</span>
               </p>
@@ -214,7 +214,7 @@ export default function LeftSidebar({
               className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-[10.5px] font-bold text-white/70 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               id="sidebar-card-settings-btn"
             >
-              <Settings className="w-3 h-3 text-violet-300" />
+              <Settings className="w-3 h-3 text-cyan-300" />
               <span>Vault</span>
             </button>
             <button
@@ -236,7 +236,7 @@ export default function LeftSidebar({
           <div className="flex items-center gap-2.5 text-left">
             <div className={`p-2 rounded-xl border transition-all ${
               isAnonymousMode 
-                ? 'bg-purple-500/20 border-purple-400/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.4)]' 
+                ? 'bg-blue-500/20 border-cyan-400/40 text-cyan-300 shadow-[0_0_12px_rgba(0,217,255,0.4)]' 
                 : 'bg-white/5 border-white/10 text-white/40'
             }`}>
               <EyeOff className="w-4 h-4" />
@@ -255,7 +255,7 @@ export default function LeftSidebar({
           <button
             onClick={() => setIsAnonymousMode(!isAnonymousMode)}
             className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer flex items-center ${
-              isAnonymousMode ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500' : 'bg-white/10'
+              isAnonymousMode ? 'bg-gradient-to-r from-blue-600 to-cyan-400' : 'bg-white/10'
             }`}
             id="anonymous-toggle-switch"
           >
@@ -263,7 +263,7 @@ export default function LeftSidebar({
               layout
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
               className={`w-4 h-4 rounded-full bg-white shadow-md transform ${
-                isAnonymousMode ? 'translate-x-5 bg-violet-100' : 'translate-x-0'
+                isAnonymousMode ? 'translate-x-5 bg-cyan-100' : 'translate-x-0'
               }`}
             />
           </button>

@@ -202,8 +202,8 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
           id="public-profile-card"
         >
           {/* Neon header badge */}
-          <div className="absolute top-4 right-4 flex items-center gap-1 bg-violet-500/10 text-violet-300 border border-violet-500/20 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
-            <Sparkles className="w-3 h-3 text-[#A855F7]" /> Public Persona
+          <div className="absolute top-4 right-4 flex items-center gap-1 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
+            <Sparkles className="w-3 h-3 text-cyan-400" /> Public Persona
           </div>
 
           <h3 className="text-sm font-bold uppercase tracking-widest text-white/50 mb-6 font-display">
@@ -216,7 +216,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
               <img 
                 src={currentUser.avatarUrl || AVATARS[0]} 
                 alt="Avatar" 
-                className="w-24 h-24 rounded-full border-2 border-violet-500/30 object-cover shadow-xl transition-all duration-300 group-hover:brightness-75 group-hover:border-violet-500/60"
+                className="w-24 h-24 rounded-full border-2 border-cyan-500/30 object-cover shadow-xl transition-all duration-300 group-hover:brightness-75 group-hover:border-cyan-500/60"
                 referrerPolicy="no-referrer"
               />
               <button 
@@ -242,7 +242,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                       key={idx}
                       onClick={() => handleSelectAvatar(url)}
                       className={`w-10 h-10 rounded-full overflow-hidden border-2 cursor-pointer transition-all ${
-                        currentUser.avatarUrl === url ? 'border-violet-500 scale-105 shadow-md' : 'border-white/10 hover:border-violet-400'
+                        currentUser.avatarUrl === url ? 'border-cyan-500 scale-105 shadow-md' : 'border-white/10 hover:border-cyan-400'
                       }`}
                     >
                       <img src={url} alt={`Option ${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -275,7 +275,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
             <div className="w-full py-3 px-4 bg-white/5 border border-white/5 rounded-xl flex justify-around items-center">
               <div className="text-center">
                 <span className="text-[10px] uppercase text-white/40 font-bold block">Karma Points</span>
-                <span className="text-lg font-bold font-display text-violet-300">{currentUser.karma} XP</span>
+                <span className="text-lg font-bold font-display text-cyan-300">{currentUser.karma} XP</span>
               </div>
               <div className="h-6 w-[1px] bg-white/10" />
               <div className="text-center">
@@ -293,7 +293,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                 {!isEditingBio ? (
                   <button 
                     onClick={() => setIsEditingBio(true)}
-                    className="text-[10px] font-bold text-violet-400 uppercase tracking-wider hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none outline-none p-0"
+                    className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none outline-none p-0"
                   >
                     <Edit2 className="w-3 h-3" /> Edit
                   </button>
@@ -329,8 +329,8 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                 {currentUser.badges.length > 0 ? (
                   currentUser.badges.map((badge, idx) => (
                     <span 
-                      key={idx}
-                      className="px-2.5 py-1 bg-purple-500/10 text-[#C084FC] border border-purple-500/15 rounded-lg text-[10px] font-semibold tracking-wide flex items-center gap-1"
+                      key={idx} 
+                      className="px-2.5 py-1 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[10px] font-semibold tracking-wide flex items-center gap-1"
                     >
                       <Award className="w-3 h-3" /> {badge}
                     </span>
@@ -450,10 +450,10 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
               </div>
 
               {/* TWO-FACTOR AUTHENTICATION (2FA) SECTION */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-950/40 via-purple-900/20 to-black/40 border border-violet-500/20 space-y-4 shadow-xl">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-950/40 via-cyan-950/20 to-black/40 border border-cyan-500/20 space-y-4 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-violet-500/15 text-violet-400 border border-violet-500/25">
+                    <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">
                       <Smartphone className="w-5 h-5" />
                     </div>
                     <div>
@@ -501,13 +501,13 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="space-y-3.5 pt-2 border-t border-violet-500/20 overflow-hidden"
+                      className="space-y-3.5 pt-2 border-t border-cyan-500/20 overflow-hidden"
                     >
                       {/* Live TOTP Code Generator Card */}
-                      <div className="p-3.5 rounded-xl bg-black/40 border border-violet-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 relative">
+                      <div className="p-3.5 rounded-xl bg-black/40 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 relative">
                         <div className="space-y-1 text-center sm:text-left">
-                          <span className="text-[9px] uppercase font-bold text-violet-300/80 tracking-widest flex items-center justify-center sm:justify-start gap-1">
-                            <KeyRound className="w-3 h-3 text-violet-400" /> Current 30s Passcode
+                          <span className="text-[9px] uppercase font-bold text-cyan-300/80 tracking-widest flex items-center justify-center sm:justify-start gap-1">
+                            <KeyRound className="w-3 h-3 text-cyan-400" /> Current 30s Passcode
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-2xl font-black font-mono tracking-widest text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
@@ -525,11 +525,11 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                         </div>
 
                         {/* Countdown ring / progress */}
-                        <div className="flex items-center gap-2 bg-violet-500/10 px-3 py-1.5 rounded-xl border border-violet-500/20">
-                          <RefreshCw className="w-3.5 h-3.5 text-violet-400 animate-spin" style={{ animationDuration: '3s' }} />
+                        <div className="flex items-center gap-2 bg-cyan-500/10 px-3 py-1.5 rounded-xl border border-cyan-500/20">
+                          <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
                           <div className="text-right">
                             <span className="text-[9px] uppercase font-bold text-white/40 block">Refreshes in</span>
-                            <span className="text-xs font-mono font-bold text-violet-300">{countdown}s</span>
+                            <span className="text-xs font-mono font-bold text-cyan-300">{countdown}s</span>
                           </div>
                         </div>
                       </div>
@@ -569,7 +569,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                         <button
                           type="button"
                           onClick={() => setShowBackupCodes(!showBackupCodes)}
-                          className="text-[10px] font-bold text-violet-400 hover:text-violet-300 uppercase tracking-wider flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                          className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 uppercase tracking-wider flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
                         >
                           <Key className="w-3 h-3" />
                           {showBackupCodes ? 'Hide Backup Codes' : 'View Quick Recovery Codes'}
@@ -578,10 +578,10 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                         <button
                           type="button"
                           onClick={() => setShowRecoveryModal(true)}
-                          className="px-2.5 py-1 rounded-lg bg-violet-600/30 hover:bg-violet-600/50 border border-violet-400/30 text-violet-200 text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                          className="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-cyan-400/30 text-cyan-200 text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
                           id="btn-launch-recovery-overlay"
                         >
-                          <ShieldAlert className="w-3.5 h-3.5 text-violet-300" />
+                          <ShieldAlert className="w-3.5 h-3.5 text-cyan-300" />
                           <span>Show Recovery Overlay</span>
                         </button>
                       </div>
@@ -612,10 +612,10 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
               </div>
 
               {/* AUTO-LOGOUT INACTIVITY PROTECTION SECTION */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-violet-900/20 to-black/40 border border-indigo-500/25 space-y-3.5 shadow-xl" id="auto-logout-setting-card">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-950/40 via-cyan-950/20 to-black/40 border border-blue-500/25 space-y-3.5 shadow-xl" id="auto-logout-setting-card">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
+                    <div className="p-2 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/25">
                       <Timer className="w-5 h-5" />
                     </div>
                     <div>
@@ -640,7 +640,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                 </div>
 
                 {/* Inactivity Duration Preset Selectors */}
-                <div className="space-y-2 pt-1 border-t border-indigo-500/20">
+                <div className="space-y-2 pt-1 border-t border-blue-500/20">
                   <span className="text-[9px] uppercase font-bold text-white/40 block">Select Inactivity Duration</span>
                   <div className="grid grid-cols-5 gap-1.5">
                     {[
@@ -658,7 +658,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                           onClick={() => handleSelectAutoLogout(opt.val)}
                           className={`py-2 px-1 rounded-xl text-xs font-bold transition-all cursor-pointer border flex flex-col items-center justify-center gap-0.5 ${
                             isSelected
-                              ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-violet-400/50 shadow-md shadow-violet-500/20 scale-[1.02]'
+                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-cyan-400/50 shadow-md shadow-cyan-500/20 scale-[1.02]'
                               : 'bg-black/40 hover:bg-white/10 text-white/70 border-white/10 hover:border-white/20'
                           }`}
                         >
@@ -673,7 +673,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                 {/* Session Behavior Info */}
                 <div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex items-center justify-between text-[10px]">
                   <span className="text-white/60 flex items-center gap-1.5">
-                    <LogOut className="w-3.5 h-3.5 text-violet-400" />
+                    <LogOut className="w-3.5 h-3.5 text-cyan-400" />
                     Session Protection State:
                   </span>
                   <span className="font-mono font-bold text-cyan-300">
@@ -689,14 +689,14 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                 
                 {/* Device Info */}
                 <div className="p-3 rounded-xl bg-black/20 border border-white/5 flex items-start gap-2.5 relative">
-                  <div className="p-1 rounded bg-violet-500/10 text-violet-400 mt-0.5">
+                  <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 mt-0.5">
                     <Cpu className="w-3.5 h-3.5" />
                   </div>
                   <div className="overflow-hidden">
                     <span className="text-[8px] uppercase tracking-wider text-white/40 font-bold block">Device Telemetry</span>
                     <button 
                       onClick={() => setShowDevice(!showDevice)}
-                      className="text-[10px] font-semibold font-mono text-white mt-1 text-left truncate w-full block cursor-pointer outline-none bg-transparent border-none p-0 hover:text-violet-300"
+                      className="text-[10px] font-semibold font-mono text-white mt-1 text-left truncate w-full block cursor-pointer outline-none bg-transparent border-none p-0 hover:text-cyan-300"
                     >
                       {showDevice ? currentUser.deviceInfo : 'Reveal Signature'}
                     </button>
@@ -705,14 +705,14 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
 
                 {/* IP Address */}
                 <div className="p-3 rounded-xl bg-black/20 border border-white/5 flex items-start gap-2.5 relative">
-                  <div className="p-1 rounded bg-violet-500/10 text-violet-400 mt-0.5">
+                  <div className="p-1 rounded bg-cyan-500/10 text-cyan-400 mt-0.5">
                     <Globe className="w-3.5 h-3.5" />
                   </div>
                   <div>
                     <span className="text-[8px] uppercase tracking-wider text-white/40 font-bold block">Masked IP Gateway</span>
                     <button 
                       onClick={() => setShowIP(!showIP)}
-                      className="text-[10px] font-semibold font-mono text-white mt-1 block cursor-pointer outline-none bg-transparent border-none p-0 hover:text-violet-300"
+                      className="text-[10px] font-semibold font-mono text-white mt-1 block cursor-pointer outline-none bg-transparent border-none p-0 hover:text-cyan-300"
                     >
                       {showIP ? currentUser.ipAddress : 'Reveal Gateway'}
                     </button>
@@ -752,24 +752,24 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
               exit={{ scale: 0.9, y: 20, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#0d0922] border border-violet-500/40 rounded-3xl p-5 sm:p-7 shadow-[0_0_50px_rgba(168,85,247,0.3)] relative overflow-hidden text-left"
+              className="w-full max-w-lg bg-[#070B14] border border-cyan-500/40 rounded-3xl p-5 sm:p-7 shadow-[0_0_50px_rgba(0,217,255,0.25)] relative overflow-hidden text-left"
               id="recovery-code-card"
             >
               {/* Background gradient blur */}
-              <div className="absolute -top-24 -right-24 w-60 h-60 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -left-24 w-60 h-60 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -top-24 -right-24 w-60 h-60 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -left-24 w-60 h-60 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
 
               {/* Modal Header */}
               <div className="flex items-start justify-between pb-4 border-b border-white/10 relative z-10">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30">
-                    <Key className="w-6 h-6 text-violet-100" />
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-cyan-500/30">
+                    <Key className="w-6 h-6 text-cyan-100" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold font-display text-white tracking-wide">
                       Emergency Recovery Codes
                     </h3>
-                    <p className="text-xs text-violet-300/80 font-medium">
+                    <p className="text-xs text-cyan-300/80 font-medium">
                       Two-Factor Authentication Active
                     </p>
                   </div>
@@ -809,7 +809,7 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                   {BACKUP_CODES.map((code, idx) => (
                     <div
                       key={idx}
-                      className="p-2.5 rounded-xl bg-black/60 border border-violet-500/20 flex items-center justify-between hover:border-violet-500/50 transition-colors group"
+                      className="p-2.5 rounded-xl bg-black/60 border border-cyan-500/20 flex items-center justify-between hover:border-cyan-500/50 transition-colors group"
                     >
                       <span className="tracking-widest">
                         <span className="text-white/30 text-[10px] mr-1">#{idx + 1}</span> {code}
@@ -835,10 +835,10 @@ export default function SecurityCenter({ currentUser, setCurrentUser, onTriggerT
                 <button
                   type="button"
                   onClick={handleCopyAllRecoveryCodes}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 border border-violet-400/30 text-violet-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 border border-cyan-400/30 text-cyan-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
                   id="btn-copy-all-recovery"
                 >
-                  {copiedBackupCodes ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4 text-violet-300" />}
+                  {copiedBackupCodes ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4 text-cyan-300" />}
                   <span>{copiedBackupCodes ? 'Copied All!' : 'Copy All Codes'}</span>
                 </button>
 

@@ -266,18 +266,18 @@ export default function CommunityModTools({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-3xl bg-[#0d0822] border border-violet-500/30 rounded-3xl p-5 sm:p-7 shadow-[0_25px_60px_rgba(124,58,237,0.35)] z-10 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar text-left"
+        className="relative w-full max-w-3xl bg-[#080d1a] border border-cyan-500/30 rounded-3xl p-5 sm:p-7 shadow-[0_25px_60px_rgba(0,217,255,0.25)] z-10 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar text-left"
         id="community-mod-tools-modal"
       >
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-violet-600/20 border border-violet-500/30 text-violet-300">
+            <div className="p-2.5 rounded-2xl bg-cyan-600/20 border border-cyan-500/30 text-cyan-300">
               <Shield className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
                 <span>Moderation Suite</span>
-                <span className="text-xs font-mono font-bold text-violet-400">c/{community.handle}</span>
+                <span className="text-xs font-mono font-bold text-cyan-400">c/{community.handle}</span>
               </h3>
               <p className="text-xs text-white/50">
                 Manage reports, community rules, sub-mods, and banned accounts.
@@ -299,7 +299,7 @@ export default function CommunityModTools({
             onClick={() => setActiveTab('reports')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeTab === 'reports'
-                ? 'bg-violet-600 text-white shadow-md'
+                ? 'bg-cyan-600 text-white shadow-md'
                 : 'bg-white/5 text-white/60 hover:text-white'
             }`}
           >
@@ -316,7 +316,7 @@ export default function CommunityModTools({
             onClick={() => setActiveTab('moderators')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeTab === 'moderators'
-                ? 'bg-violet-600 text-white shadow-md'
+                ? 'bg-cyan-600 text-white shadow-md'
                 : 'bg-white/5 text-white/60 hover:text-white'
             }`}
           >
@@ -328,7 +328,7 @@ export default function CommunityModTools({
             onClick={() => setActiveTab('banned')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeTab === 'banned'
-                ? 'bg-violet-600 text-white shadow-md'
+                ? 'bg-cyan-600 text-white shadow-md'
                 : 'bg-white/5 text-white/60 hover:text-white'
             }`}
           >
@@ -340,7 +340,7 @@ export default function CommunityModTools({
             onClick={() => setActiveTab('rules')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeTab === 'rules'
-                ? 'bg-violet-600 text-white shadow-md'
+                ? 'bg-cyan-600 text-white shadow-md'
                 : 'bg-white/5 text-white/60 hover:text-white'
             }`}
           >
@@ -353,12 +353,12 @@ export default function CommunityModTools({
         {activeTab === 'reports' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-violet-200">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-200">
                 Pending Flagged Reports
               </h4>
               <button
                 onClick={fetchReports}
-                className="text-xs text-violet-400 hover:text-violet-300 font-bold flex items-center gap-1 p-1"
+                className="text-xs text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 p-1"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingReports ? 'animate-spin' : ''}`} /> Refresh
               </button>
@@ -366,7 +366,7 @@ export default function CommunityModTools({
 
             {isLoadingReports ? (
               <div className="p-8 text-center text-white/40 text-xs flex flex-col items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+                <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
                 <span>Loading reports...</span>
               </div>
             ) : reports.length === 0 ? (
@@ -422,7 +422,7 @@ export default function CommunityModTools({
         {activeTab === 'moderators' && (
           <div className="space-y-4">
             <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10">
-              <label className="block text-xs font-bold text-violet-200 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-cyan-200 uppercase tracking-wider mb-2">
                 Add New Moderator
               </label>
               <div className="flex gap-2">
@@ -431,11 +431,11 @@ export default function CommunityModTools({
                   value={newModUsername}
                   onChange={(e) => setNewModUsername(e.target.value)}
                   placeholder="Enter username (e.g. ShadowCipher)"
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-violet-500"
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-cyan-500"
                 />
                 <button
                   onClick={handleAddModerator}
-                  className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" /> Add Mod
                 </button>
@@ -443,7 +443,7 @@ export default function CommunityModTools({
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-violet-200 mb-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-200 mb-1">
                 Current Moderators
               </h4>
               {moderators.map((mod) => (
@@ -565,7 +565,7 @@ export default function CommunityModTools({
                       setNewRuleDesc('');
                     }
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs cursor-pointer"
                 >
                   Add Rule
                 </button>

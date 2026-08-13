@@ -183,19 +183,19 @@ export default function AIUsernameGenerator({
             maxHeight: '90vh',
             overflowY: 'auto'
           }}
-          className="relative z-[10000] w-[92vw] sm:w-[min(92vw,750px)] max-w-[750px] max-h-[85vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden bg-[#0c081e]/95 border border-violet-500/30 shadow-[0_25px_80px_rgba(124,58,237,0.4)] backdrop-blur-2xl rounded-3xl p-5 sm:p-7 md:p-8 space-y-5 text-left text-white my-auto custom-scrollbar"
+          className="relative z-[10000] w-[92vw] sm:w-[min(92vw,750px)] max-w-[750px] max-h-[85vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden bg-[#080d1a]/95 border border-cyan-500/30 shadow-[0_25px_80px_rgba(0,217,255,0.25)] backdrop-blur-2xl rounded-3xl p-5 sm:p-7 md:p-8 space-y-5 text-left text-white my-auto custom-scrollbar"
           onClick={(e) => e.stopPropagation()}
           id="ai-username-modal"
         >
           {/* Subtle Top Glass Beam */}
-          <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-violet-400/50 to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent pointer-events-none" />
 
           {/* Header */}
           <div className="flex items-start justify-between border-b border-white/10 pb-4 gap-3">
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-violet-500/20 text-violet-300 border border-violet-500/30 shadow-[0_0_15px_rgba(168,85,247,0.3)] flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-violet-300 animate-spin" style={{ animationDuration: '6s' }} />
+                <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-[0_0_15px_rgba(0,217,255,0.25)] flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-cyan-300 animate-spin" style={{ animationDuration: '6s' }} />
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-base sm:text-lg md:text-xl font-bold font-display text-white tracking-wider uppercase truncate">
@@ -220,7 +220,7 @@ export default function AIUsernameGenerator({
 
           {/* Theme Style Selection */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-violet-300/80 font-bold">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-cyan-300/80 font-bold">
               <span>Persona Theme</span>
               <span className="text-white/40 font-normal">Select an archetype</span>
             </div>
@@ -238,13 +238,13 @@ export default function AIUsernameGenerator({
                     }}
                     className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group ${
                       isActive
-                        ? "bg-violet-600/30 border-violet-400/70 text-white shadow-[0_0_20px_rgba(168,85,247,0.35)] scale-[1.02]"
+                        ? "bg-cyan-600/30 border-cyan-400/70 text-white shadow-[0_0_20px_rgba(0,217,255,0.35)] scale-[1.02]"
                         : "bg-white/[0.02] border-white/5 text-white/60 hover:text-white hover:bg-white/5 hover:border-white/15"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-base">{style.icon}</span>
-                      {isActive && <Check className="w-3.5 h-3.5 text-violet-300" />}
+                      {isActive && <Check className="w-3.5 h-3.5 text-cyan-300" />}
                     </div>
                     <span className="text-xs font-bold tracking-tight block truncate">
                       {style.name}
@@ -261,10 +261,10 @@ export default function AIUsernameGenerator({
               type="button"
               onClick={() => handleGenerate()}
               disabled={isLoading}
-              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold tracking-wide shadow-lg shadow-violet-600/35 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 hover:from-blue-500 hover:to-teal-500 text-white text-xs sm:text-sm font-bold tracking-wide shadow-lg shadow-cyan-600/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all hover:scale-[1.01] active:scale-[0.99]"
               id="btn-generate-10-ideas"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin text-violet-200" : "text-violet-200"}`} />
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin text-cyan-200" : "text-cyan-200"}`} />
               <span>{isLoading ? "Synthesizing Neural Ideas..." : "[ Generate 10 New Ideas ]"}</span>
             </button>
           </div>
@@ -274,7 +274,7 @@ export default function AIUsernameGenerator({
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-[10px] font-bold text-violet-400 hover:text-violet-300 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+              className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
             >
               <Settings2 className="w-3.5 h-3.5" />
               <span>Advanced Tuning & Rules</span>
@@ -298,7 +298,7 @@ export default function AIUsernameGenerator({
                       value={customPrompt}
                       onChange={(e) => setCustomPrompt(e.target.value)}
                       placeholder="e.g. stealthy wolf, one-word futuristic cyberpunk alias"
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none focus:border-violet-500/50"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none focus:border-cyan-500/50"
                     />
                   </div>
 
@@ -311,7 +311,7 @@ export default function AIUsernameGenerator({
                         type="button"
                         onClick={() => setAllowNumbers(!allowNumbers)}
                         className={`w-full py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
-                          allowNumbers ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "bg-white/5 border-white/10 text-white/40"
+                          allowNumbers ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" : "bg-white/5 border-white/10 text-white/40"
                         }`}
                       >
                         {allowNumbers ? "Allowed" : "Off"}
@@ -326,7 +326,7 @@ export default function AIUsernameGenerator({
                         type="button"
                         onClick={() => setAllowSpecial(!allowSpecial)}
                         className={`w-full py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
-                          allowSpecial ? "bg-violet-500/20 border-violet-500/40 text-violet-300" : "bg-white/5 border-white/10 text-white/40"
+                          allowSpecial ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" : "bg-white/5 border-white/10 text-white/40"
                         }`}
                       >
                         {allowSpecial ? "Allowed" : "Off"}
@@ -343,7 +343,7 @@ export default function AIUsernameGenerator({
                         max="20"
                         value={maxLength}
                         onChange={(e) => setMaxLength(parseInt(e.target.value))}
-                        className="w-full mt-2 accent-violet-500 cursor-pointer"
+                        className="w-full mt-2 accent-cyan-500 cursor-pointer"
                       />
                     </div>
                   </div>
@@ -361,7 +361,7 @@ export default function AIUsernameGenerator({
               </span>
 
               {isLoading && (
-                <span className="text-xs text-violet-400 font-bold flex items-center gap-1.5 animate-pulse">
+                <span className="text-xs text-cyan-400 font-bold flex items-center gap-1.5 animate-pulse">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Synthesizing...
                 </span>
               )}
@@ -388,8 +388,8 @@ export default function AIUsernameGenerator({
                     }}
                     className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 group relative overflow-hidden ${
                       isSelected
-                        ? "bg-gradient-to-br from-violet-600/40 via-purple-600/35 to-indigo-600/40 border-violet-400 text-white shadow-[0_0_25px_rgba(168,85,247,0.45)] ring-1 ring-violet-400/50"
-                        : "bg-black/40 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-violet-500/30"
+                        ? "bg-gradient-to-br from-blue-600/40 via-cyan-600/35 to-teal-600/40 border-cyan-400 text-white shadow-[0_0_25px_rgba(0,217,255,0.4)] ring-1 ring-cyan-400/50"
+                        : "bg-black/40 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-cyan-500/30"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-1">
@@ -407,7 +407,7 @@ export default function AIUsernameGenerator({
                           <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
                         </span>
                       ) : (
-                        <span className="opacity-0 group-hover:opacity-100 text-violet-300">Select</span>
+                        <span className="opacity-0 group-hover:opacity-100 text-cyan-300">Select</span>
                       )}
                     </div>
                   </button>
@@ -417,9 +417,9 @@ export default function AIUsernameGenerator({
           </div>
 
           {/* CHOSEN PERSONA DISPLAY & ACTIONS FOOTER */}
-          <div className="p-4 rounded-2xl bg-violet-950/30 border border-violet-500/25 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-2">
+          <div className="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/25 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-2">
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-extrabold tracking-widest text-violet-300 block">
+              <span className="text-[10px] uppercase font-extrabold tracking-widest text-cyan-300 block">
                 CHOSEN PERSONA
               </span>
               {isEditing ? (
@@ -429,7 +429,7 @@ export default function AIUsernameGenerator({
                     type="text"
                     value={customEditValue}
                     onChange={(e) => setCustomEditValue(e.target.value.replace(/\s+/g, ''))}
-                    className="px-3 py-1 rounded-lg bg-black/60 border border-violet-500/50 text-sm font-mono font-bold text-emerald-300 outline-none w-full max-w-[200px]"
+                    className="px-3 py-1 rounded-lg bg-black/60 border border-cyan-500/50 text-sm font-mono font-bold text-emerald-300 outline-none w-full max-w-[200px]"
                     autoFocus
                   />
                 </div>
@@ -442,7 +442,7 @@ export default function AIUsernameGenerator({
                   <button
                     type="button"
                     onClick={() => setIsEditing(true)}
-                    className="p-1 text-white/40 hover:text-violet-300 transition-colors cursor-pointer"
+                    className="p-1 text-white/40 hover:text-cyan-300 transition-colors cursor-pointer"
                     title="Edit handle directly"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -463,7 +463,7 @@ export default function AIUsernameGenerator({
               <button
                 type="button"
                 onClick={handleConfirm}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold tracking-wide shadow-lg shadow-violet-600/40 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 hover:from-blue-500 hover:to-teal-500 text-white text-xs font-bold tracking-wide shadow-lg shadow-cyan-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 id="btn-confirm-use-handle"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-300" />
@@ -474,7 +474,7 @@ export default function AIUsernameGenerator({
 
           {/* Privacy Footnote */}
           <div className="flex items-center justify-center sm:justify-start gap-2 text-[10px] text-white/40 pt-1">
-            <Shield className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+            <Shield className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
             <span>Zero PII used • Fully anonymous • Encrypted session profile</span>
           </div>
         </motion.div>
@@ -493,11 +493,11 @@ export default function AIUsernameGenerator({
               setIsModalOpen(true);
               if (suggestions.length === 0) handleGenerate();
             }}
-            className="p-1.5 rounded-lg bg-violet-600/30 hover:bg-violet-600/50 border border-violet-400/40 text-violet-200 transition-all cursor-pointer hover:scale-105 active:scale-95"
+            className="p-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-400/40 text-cyan-200 transition-all cursor-pointer hover:scale-105 active:scale-95"
             title="Generate with AI"
             id="btn-open-ai-generator-compact"
           >
-            <Sparkles className="w-3.5 h-3.5 text-violet-300 animate-pulse" />
+            <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
           </button>
           <button
             type="button"
@@ -519,11 +519,11 @@ export default function AIUsernameGenerator({
             }}
             className={
               triggerBtnClassName ||
-              "px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600/30 via-purple-600/30 to-indigo-600/30 hover:from-violet-600/50 hover:to-indigo-600/50 border border-violet-400/30 text-violet-200 text-[11px] font-bold tracking-wide flex items-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.2)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+              "px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/30 via-cyan-600/30 to-teal-600/30 hover:from-blue-600/50 hover:to-teal-600/50 border border-cyan-400/30 text-cyan-200 text-[11px] font-bold tracking-wide flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,217,255,0.2)] hover:shadow-[0_0_20px_rgba(0,217,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             }
             id="btn-open-ai-generator"
           >
-            <Sparkles className="w-3.5 h-3.5 text-violet-300 animate-pulse" />
+            <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
             <span>✨ Generate with AI</span>
           </button>
 

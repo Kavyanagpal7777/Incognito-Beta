@@ -204,10 +204,10 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-4 rounded-2xl bg-gradient-to-r from-violet-600/30 via-purple-600/20 to-indigo-600/30 border border-violet-400/50 shadow-[0_0_25px_rgba(168,85,247,0.25)] flex items-center justify-between gap-4 backdrop-blur-xl"
+          className="p-4 rounded-2xl bg-gradient-to-r from-blue-600/30 via-cyan-600/20 to-blue-600/30 border border-cyan-400/50 shadow-[0_0_25px_rgba(0,217,255,0.25)] flex items-center justify-between gap-4 backdrop-blur-xl"
         >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-violet-500/20 text-violet-300 border border-violet-400/30">
+            <div className="p-2 rounded-xl bg-blue-500/20 text-cyan-300 border border-cyan-400/30">
               <Bell className="w-5 h-5 animate-bounce" />
             </div>
             <div>
@@ -215,7 +215,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                 Official Leaderboard Update
                 <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
               </h4>
-              <p className="text-xs text-violet-100 mt-0.5 font-medium">
+              <p className="text-xs text-cyan-100 mt-0.5 font-medium">
                 {userRankInfo.notification.message}
               </p>
             </div>
@@ -231,8 +231,8 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
       )}
 
       {/* HEADER BANNER */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-violet-950/50 via-purple-900/40 to-indigo-950/50 border border-violet-500/30 relative overflow-hidden backdrop-blur-xl space-y-4">
-        <div className="absolute -top-10 -right-10 w-48 h-48 bg-violet-500/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-950/50 via-[#0D1320] to-cyan-950/50 border border-cyan-500/30 relative overflow-hidden backdrop-blur-xl space-y-4">
+        <div className="absolute -top-10 -right-10 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -254,7 +254,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
             <button
               onClick={handleForceRefresh}
               disabled={isForceRefreshing}
-              className="px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 to-violet-600/30 border border-amber-400/40 hover:border-amber-400 text-amber-200 text-xs font-bold flex items-center gap-2 transition-all shrink-0 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50"
+              className="px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 to-blue-600/30 border border-amber-400/40 hover:border-amber-400 text-amber-200 text-xs font-bold flex items-center gap-2 transition-all shrink-0 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50"
             >
               <RotateCw className={`w-3.5 h-3.5 text-amber-300 ${isForceRefreshing ? 'animate-spin' : ''}`} />
               {isForceRefreshing ? 'Recalculating Ranks...' : '⚡ Force Refresh (Admin)'}
@@ -267,7 +267,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
           
           {/* COUNTDOWN TIMER */}
           <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-violet-500/20 text-violet-300">
+            <div className="p-2 rounded-xl bg-blue-500/20 text-cyan-300">
               <Clock className="w-4 h-4" />
             </div>
             <div>
@@ -304,7 +304,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
             onClick={() => setActiveTab('standings')}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
               activeTab === 'standings'
-                ? 'bg-violet-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+                ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(22,119,255,0.4)]'
                 : 'bg-black/30 text-white/60 hover:text-white hover:bg-black/50 border border-white/5'
             }`}
           >
@@ -316,7 +316,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
             onClick={() => setActiveTab('history')}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
               activeTab === 'history'
-                ? 'bg-violet-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+                ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(22,119,255,0.4)]'
                 : 'bg-black/30 text-white/60 hover:text-white hover:bg-black/50 border border-white/5'
             }`}
           >
@@ -351,7 +351,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                 <div className="my-3 flex flex-col items-center gap-1">
                   <h4 className="font-bold text-sm text-white flex items-center justify-center gap-1 hover:underline">
                     @{top2.username}
-                    {top2.verified && <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />}
+                    {top2.verified && <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />}
                   </h4>
 
                   {top2.leaderTitle && (
@@ -381,7 +381,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
               <motion.div 
                 whileHover={{ y: -6 }}
                 onClick={() => onViewUserProfile?.(top1.username)}
-                className="p-6 rounded-3xl bg-gradient-to-b from-amber-500/20 via-violet-950/40 to-black/60 border border-amber-400/50 backdrop-blur-2xl relative overflow-hidden text-center flex flex-col items-center justify-between shadow-[0_10px_40px_rgba(245,158,11,0.25)] sm:-mt-3 sm:order-2 cursor-pointer hover:border-amber-400 transition-all"
+                className="p-6 rounded-3xl bg-gradient-to-b from-amber-500/20 via-[#0D1320] to-black/60 border border-amber-400/50 backdrop-blur-2xl relative overflow-hidden text-center flex flex-col items-center justify-between shadow-[0_10px_40px_rgba(245,158,11,0.25)] sm:-mt-3 sm:order-2 cursor-pointer hover:border-amber-400 transition-all"
               >
                 <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
                   <Crown className="w-3 h-3 text-amber-300" />
@@ -441,7 +441,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                 <div className="my-3 flex flex-col items-center gap-1">
                   <h4 className="font-bold text-sm text-white flex items-center justify-center gap-1 hover:underline">
                     @{top3.username}
-                    {top3.verified && <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />}
+                    {top3.verified && <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />}
                   </h4>
 
                   {top3.leaderTitle && (
@@ -469,11 +469,11 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
           </div>
 
           {/* SEARCH & LEADERBOARD TABLE */}
-          <div className="p-5 rounded-3xl bg-[#0d091f]/80 border border-violet-500/20 backdrop-blur-2xl space-y-4 shadow-xl">
+          <div className="p-5 rounded-3xl bg-[#0D1320]/80 border border-cyan-500/20 backdrop-blur-2xl space-y-4 shadow-xl">
             
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Award className="w-4 h-4 text-violet-400" />
+                <Award className="w-4 h-4 text-cyan-400" />
                 Official Scheduled Ranks
               </h3>
 
@@ -484,14 +484,14 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search user..."
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none focus:border-violet-500"
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none focus:border-cyan-500"
                 />
               </div>
             </div>
 
             {/* INFORMATIONAL NOTICE */}
-            <div className="p-3 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-xs text-violet-200/80 flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-2xl bg-blue-500/10 border border-cyan-500/20 text-xs text-cyan-200/80 flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
               <span>
                 <strong>Fixed Window Rule</strong>: Positions remain locked throughout the 12-hour interval. Earning or spending Karma in real time updates your profile, and determines your rank on the next 12-hour refresh.
               </span>
@@ -529,7 +529,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                   }
                 } else {
                   rankChangeBadge = (
-                    <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-extrabold">
+                    <span className="px-1.5 py-0.5 rounded-md bg-blue-500/20 text-cyan-300 border border-cyan-500/30 text-[9px] font-extrabold">
                       NEW
                     </span>
                   );
@@ -541,8 +541,8 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                     onClick={() => onViewUserProfile?.(user.username)}
                     className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
                       isSelf 
-                        ? 'bg-violet-600/20 hover:bg-violet-600/30 border-violet-400/50 shadow-[0_0_15px_rgba(168,85,247,0.2)]' 
-                        : 'bg-black/20 hover:bg-black/40 border-white/5 hover:border-violet-400/30'
+                        ? 'bg-blue-600/20 hover:bg-blue-600/30 border-cyan-400/50 shadow-[0_0_15px_rgba(0,217,255,0.2)]' 
+                        : 'bg-black/20 hover:bg-black/40 border-white/5 hover:border-cyan-400/30'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -561,10 +561,10 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
 
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-bold text-white hover:text-violet-300 hover:underline">@{user.username}</span>
+                          <span className="text-xs font-bold text-white hover:text-cyan-300 hover:underline">@{user.username}</span>
                           
                           {isSelf && (
-                            <span className="px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-200 border border-violet-500/30 text-[8px] font-extrabold uppercase">
+                            <span className="px-1.5 py-0.2 rounded bg-blue-500/20 text-cyan-200 border border-cyan-500/30 text-[8px] font-extrabold uppercase">
                               You
                             </span>
                           )}
@@ -602,11 +602,11 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
         </>
       ) : (
         /* HISTORICAL SNAPSHOTS VIEW */
-        <div className="p-6 rounded-3xl bg-[#0d091f]/80 border border-violet-500/20 backdrop-blur-2xl space-y-6 shadow-xl">
+        <div className="p-6 rounded-3xl bg-[#0D1320]/80 border border-cyan-500/20 backdrop-blur-2xl space-y-6 shadow-xl">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <History className="w-5 h-5 text-violet-400" />
+                <History className="w-5 h-5 text-cyan-400" />
                 Historical Leaderboard Snapshots
               </h3>
               <p className="text-xs text-white/60 mt-0.5">
@@ -623,12 +623,12 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                 onClick={() => setSelectedSnapshot(snap)}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                   selectedSnapshot?.id === snap.id 
-                    ? 'bg-violet-600/20 border-violet-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                    : 'bg-black/30 hover:bg-black/50 border-white/10 hover:border-violet-500/30'
+                    ? 'bg-blue-600/20 border-cyan-400 shadow-[0_0_15px_rgba(0,217,255,0.3)]'
+                    : 'bg-black/30 hover:bg-black/50 border-white/10 hover:border-cyan-500/30'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 text-[10px] font-extrabold uppercase tracking-wide">
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-cyan-500/30 text-cyan-300 text-[10px] font-extrabold uppercase tracking-wide">
                     Cycle #{snapshots.length - idx}
                   </span>
                   <span className="text-[10px] text-white/50 font-mono">
@@ -642,7 +642,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                 </div>
 
                 <div className="text-[11px] text-white/60 mb-3">
-                  Triggered by: <span className="text-violet-300 font-semibold">{snap.triggeredBy}</span>
+                  Triggered by: <span className="text-cyan-300 font-semibold">{snap.triggeredBy}</span>
                 </div>
 
                 {/* TOP 3 PREVIEW */}
@@ -660,7 +660,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                   ))}
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-[11px] text-violet-300 font-semibold pt-2 border-t border-white/5">
+                <div className="mt-3 flex items-center justify-between text-[11px] text-cyan-300 font-semibold pt-2 border-t border-white/5">
                   <span>View Full Snapshot</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </div>
@@ -676,7 +676,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-[#0f0b24] border border-violet-500/40 rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl relative"
+                  className="bg-[#0D1320] border border-cyan-500/40 rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl relative"
                 >
                   <button 
                     onClick={() => setSelectedSnapshot(null)}
@@ -732,7 +732,7 @@ export default function LeaderboardView({ currentUser, onViewUserProfile }: Lead
                   <div className="pt-2 text-center">
                     <button
                       onClick={() => setSelectedSnapshot(null)}
-                      className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold w-full transition-all"
+                      className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold w-full transition-all"
                     >
                       Close Snapshot Viewer
                     </button>

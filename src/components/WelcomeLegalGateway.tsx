@@ -117,19 +117,19 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
   return (
     <div className="fixed inset-0 z-50 bg-[#070414] text-white flex items-center justify-center overflow-hidden font-sans select-none">
       
-      {/* ANIMATED PURPLE/VIOLET BACKGROUND CANVAS */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#12052c] via-[#09021a] to-[#1c083b] animate-gradient-slow" />
+      {/* ANIMATED ELECTRIC BLUE/CYAN BACKGROUND CANVAS */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#070B14] via-[#0D1320] to-[#101827] animate-gradient-slow" />
       
       {/* GLOWING ORBS & FLOATING PARTICLES */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/20 rounded-full blur-[120px] animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] animate-pulse delay-1000" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[150px]" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/20 rounded-full blur-[120px] animate-pulse delay-1000" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[150px]" />
 
       {/* BACKGROUND PARTICLE GRID */}
       <div 
         className="absolute inset-0 opacity-20 pointer-events-none" 
         style={{
-          backgroundImage: `radial-gradient(rgba(168, 85, 247, 0.4) 1px, transparent 1px)`,
+          backgroundImage: `radial-gradient(rgba(0, 217, 255, 0.4) 1px, transparent 1px)`,
           backgroundSize: '32px 32px'
         }}
       />
@@ -146,48 +146,48 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.4 }}
-            className="w-full text-center space-y-8 p-8 sm:p-12 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden"
+            className="w-full text-center space-y-8 p-8 sm:p-12 rounded-3xl bg-[#101827]/80 border border-cyan-500/20 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden"
           >
             {/* Ambient inner glow */}
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-violet-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
 
             {/* Glowing Logo */}
             <div className="flex flex-col items-center justify-center space-y-4">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl blur-xl opacity-70 group-hover:opacity-100 transition-opacity animate-pulse" />
-                <div className="relative p-5 rounded-2xl bg-black/60 border border-violet-500/40 shadow-2xl flex items-center justify-center">
-                  <IncognitoLogo className="w-16 h-16 text-violet-400" />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl blur-xl opacity-70 group-hover:opacity-100 transition-opacity animate-pulse" />
+                <div className="relative p-5 rounded-2xl bg-black/60 border border-cyan-500/40 shadow-2xl flex items-center justify-center">
+                  <IncognitoLogo className="w-16 h-16 text-cyan-400" />
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-300 text-xs font-semibold tracking-wider uppercase">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold tracking-wider uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
                 Next-Gen Privacy Network
               </div>
             </div>
 
             {/* Title & Quote */}
             <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-100 to-violet-300">
+              <h1 className="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-cyan-300">
                 Welcome to Incógnito
               </h1>
-              <p className="text-sm sm:text-base text-violet-200/80 max-w-md mx-auto italic font-medium leading-relaxed">
+              <p className="text-sm sm:text-base text-cyan-200/80 max-w-md mx-auto italic font-medium leading-relaxed">
                 "The anonymous community where your identity stays private and your voice matters."
               </p>
             </div>
 
             {/* Feature Pills */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-violet-200/70 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-cyan-200/70 pt-2">
               <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-violet-400 shrink-0" />
+                <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
                 <span>Zero Trace Privacy</span>
               </div>
               <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center gap-2">
-                <Users className="w-4 h-4 text-violet-400 shrink-0" />
+                <Users className="w-4 h-4 text-cyan-400 shrink-0" />
                 <span>Safe Community</span>
               </div>
               <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center gap-2">
-                <Lock className="w-4 h-4 text-violet-400 shrink-0" />
+                <Lock className="w-4 h-4 text-cyan-400 shrink-0" />
                 <span>End-to-End Control</span>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setStep('legal_popup')}
-                className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-all cursor-pointer mx-auto"
+                className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-[#1677FF] via-blue-600 to-[#00D9FF] hover:from-[#2388FF] hover:to-[#33E5FF] text-white font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,217,255,0.4)] transition-all cursor-pointer mx-auto"
               >
                 <span>Continue</span>
                 <ArrowRight className="w-5 h-5" />
@@ -216,11 +216,11 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -15 }}
             transition={{ duration: 0.3 }}
-            className="w-full p-6 sm:p-8 rounded-3xl bg-[#0e0826]/90 border border-violet-500/30 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.8)] relative overflow-hidden space-y-6"
+            className="w-full p-6 sm:p-8 rounded-3xl bg-[#0D1320]/90 border border-cyan-500/30 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.8)] relative overflow-hidden space-y-6"
           >
             {/* Header */}
             <div className="space-y-2 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2 text-violet-400 text-xs font-extrabold uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-cyan-400 text-xs font-extrabold uppercase tracking-widest">
                 <ShieldCheck className="w-4 h-4" />
                 Required Verification
               </div>
@@ -236,12 +236,12 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
             <div className="space-y-3.5">
               
               {/* Age Confirmation */}
-              <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-violet-500/30 transition-all cursor-pointer group">
+              <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-cyan-500/30 transition-all cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={ageConfirmed}
                   onChange={(e) => setAgeConfirmed(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/50 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                  className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/50 text-blue-600 focus:ring-cyan-500 cursor-pointer"
                 />
                 <span className="text-xs sm:text-sm text-white/90 group-hover:text-white transition-colors">
                   I confirm I meet the minimum age requirement (13+ or local legal age).
@@ -249,20 +249,20 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
               </label>
 
               {/* Terms & Conditions */}
-              <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-violet-500/30 transition-all">
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-cyan-500/30 transition-all">
                 <label className="flex items-center gap-3 cursor-pointer flex-1">
                   <input
                     type="checkbox"
                     checked={termsAccepted}
                     onChange={(e) => setTermsAccepted(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-black/50 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-white/20 bg-black/50 text-blue-600 focus:ring-cyan-500 cursor-pointer"
                   />
                   <span className="text-xs sm:text-sm text-white/90">
                     I have read and agree to the{' '}
                     <button
                       type="button"
                       onClick={() => setActiveDocModal('terms')}
-                      className="text-violet-400 hover:text-violet-300 underline font-semibold cursor-pointer"
+                      className="text-cyan-400 hover:text-cyan-300 underline font-semibold cursor-pointer"
                     >
                       Terms & Conditions
                     </button>
@@ -276,7 +276,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
                     termsRead 
                       ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300' 
-                      : 'bg-violet-500/20 border border-violet-500/30 text-violet-300 hover:bg-violet-500/30'
+                      : 'bg-blue-500/20 border border-cyan-500/30 text-cyan-300 hover:bg-blue-500/30'
                   }`}
                 >
                   {termsRead ? (
@@ -294,20 +294,20 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
               </div>
 
               {/* Privacy Policy */}
-              <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-violet-500/30 transition-all">
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-cyan-500/30 transition-all">
                 <label className="flex items-center gap-3 cursor-pointer flex-1">
                   <input
                     type="checkbox"
                     checked={privacyAccepted}
                     onChange={(e) => setPrivacyAccepted(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-black/50 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-white/20 bg-black/50 text-blue-600 focus:ring-cyan-500 cursor-pointer"
                   />
                   <span className="text-xs sm:text-sm text-white/90">
                     I have read the{' '}
                     <button
                       type="button"
                       onClick={() => setActiveDocModal('privacy')}
-                      className="text-violet-400 hover:text-violet-300 underline font-semibold cursor-pointer"
+                      className="text-cyan-400 hover:text-cyan-300 underline font-semibold cursor-pointer"
                     >
                       Privacy Policy
                     </button>
@@ -321,7 +321,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
                     privacyRead 
                       ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300' 
-                      : 'bg-violet-500/20 border border-violet-500/30 text-violet-300 hover:bg-violet-500/30'
+                      : 'bg-blue-500/20 border border-cyan-500/30 text-cyan-300 hover:bg-blue-500/30'
                   }`}
                 >
                   {privacyRead ? (
@@ -339,20 +339,20 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
               </div>
 
               {/* Community Guidelines */}
-              <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-violet-500/30 transition-all">
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-cyan-500/30 transition-all">
                 <label className="flex items-center gap-3 cursor-pointer flex-1">
                   <input
                     type="checkbox"
                     checked={guidelinesAccepted}
                     onChange={(e) => setGuidelinesAccepted(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-black/50 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-white/20 bg-black/50 text-blue-600 focus:ring-cyan-500 cursor-pointer"
                   />
                   <span className="text-xs sm:text-sm text-white/90">
                     I agree to follow the{' '}
                     <button
                       type="button"
                       onClick={() => setActiveDocModal('guidelines')}
-                      className="text-violet-400 hover:text-violet-300 underline font-semibold cursor-pointer"
+                      className="text-cyan-400 hover:text-cyan-300 underline font-semibold cursor-pointer"
                     >
                       Community Guidelines
                     </button>
@@ -366,7 +366,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
                     guidelinesRead 
                       ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300' 
-                      : 'bg-violet-500/20 border border-violet-500/30 text-violet-300 hover:bg-violet-500/30'
+                      : 'bg-blue-500/20 border border-cyan-500/30 text-cyan-300 hover:bg-blue-500/30'
                   }`}
                 >
                   {guidelinesRead ? (
@@ -390,7 +390,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
               <div>
                 Last Updated: <span className="text-white/80 font-semibold">{POLICY_LAST_UPDATED}</span>
               </div>
-              <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-violet-300 font-mono font-bold">
+              <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-cyan-300 font-mono font-bold">
                 Version {CURRENT_POLICY_VERSION}
               </div>
             </div>
@@ -409,7 +409,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
                 type="button"
                 disabled={!allChecked || isSubmitting}
                 onClick={handleAcceptAndContinue}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:from-gray-700 disabled:to-gray-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.4)] disabled:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#1677FF] to-[#00D9FF] hover:from-[#2388FF] hover:to-[#33E5FF] disabled:from-gray-700 disabled:to-gray-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,217,255,0.3)] disabled:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>{isSubmitting ? 'Recording Agreement...' : 'Accept & Continue'}</span>
@@ -444,7 +444,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
               <button
                 onClick={() => setStep('legal_popup')}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Review Again</span>
@@ -472,7 +472,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-[#0f0926] border border-violet-500/40 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl relative"
+              className="bg-[#0D1320] border border-cyan-500/40 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl relative"
             >
               {/* Close Button */}
               <button
@@ -484,7 +484,7 @@ export default function WelcomeLegalGateway({ userId, username, onAccept }: Welc
 
               {/* Modal Header */}
               <div className="space-y-1 mb-4 pr-8 border-b border-white/10 pb-4">
-                <div className="flex items-center gap-2 text-violet-400 text-xs font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
                   <FileText className="w-4 h-4" />
                   Official Policy Document
                 </div>

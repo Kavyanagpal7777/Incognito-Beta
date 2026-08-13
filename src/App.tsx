@@ -55,7 +55,7 @@ import UserProfileModal from './components/UserProfileModal';
 import AdminGovernancePanel from './components/AdminGovernancePanel';
 import WelcomeLegalGateway from './components/WelcomeLegalGateway';
 import FloatingPostButton from './components/FloatingPostButton';
-import { Home, Trophy, PlusCircle, MessageSquare, Menu, X as CloseIcon } from 'lucide-react';
+import { Home, Trophy, MessageSquare, Menu, X as CloseIcon } from 'lucide-react';
 
 const CURRENT_POLICY_VERSION = "1.0";
 
@@ -389,6 +389,123 @@ export default function App() {
     setToast({ message, type });
   };
 
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-id': currentUser?.id || ''
+        }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.success === false) {
+        if (res.status === 404 || data.error === 'POST_NOT_FOUND') {
+          setPosts(prev => {
+            const updated = prev.filter(p => p.id !== postId);
+            localStorage.setItem('incognito_posts', JSON.stringify(updated));
+            return updated;
+          });
+        }
+        triggerToast('Unable to delete post. Please try again.', 'error');
+        return;
+      }
+
+      setPosts(prev => {
+        const updated = prev.filter(p => p.id !== postId);
+        localStorage.setItem('incognito_posts', JSON.stringify(updated));
+        localStorage.setItem('aetheris_posts', JSON.stringify(updated));
+        return updated;
+      });
+      triggerToast('Post deleted successfully.', 'info');
+    } catch (err) {
+      console.error('Error deleting post on server:', err);
+      triggerToast('Unable to delete post. Please try again.', 'error');
+    }
+  };
+
+  const handleVotePoll = async (postId: string, optionId: string) => {
+    setPosts(prev => 
+      prev.map(post => {
+        if (post.id === postId && post.poll) {
+          const currentPoll = post.poll;
+          const isTogglingOff = currentPoll.userVotedId === optionId;
+          const isChangingVote = Boolean(currentPoll.userVotedId && currentPoll.userVotedId !== optionId);
+
+          let updatedOptions = [...currentPoll.options];
+          let updatedTotalVotes = currentPoll.totalVotes || 0;
+          let newUserVotedId: string | undefined = optionId;
+
+          if (isTogglingOff) {
+            updatedOptions = updatedOptions.map(opt => {
+              if (opt.id === optionId) return { ...opt, votes: Math.max(0, (opt.votes || 0) - 1) };
+              return opt;
+            });
+            updatedTotalVotes = Math.max(0, updatedTotalVotes - 1);
+            newUserVotedId = undefined;
+          } else if (isChangingVote) {
+            updatedOptions = updatedOptions.map(opt => {
+              if (opt.id === optionId) return { ...opt, votes: (opt.votes || 0) + 1 };
+              if (opt.id === currentPoll.userVotedId) return { ...opt, votes: Math.max(0, (opt.votes || 0) - 1) };
+              return opt;
+            });
+            newUserVotedId = optionId;
+          } else {
+            updatedOptions = updatedOptions.map(opt => {
+              if (opt.id === optionId) return { ...opt, votes: (opt.votes || 0) + 1 };
+              return opt;
+            });
+            updatedTotalVotes = updatedTotalVotes + 1;
+            newUserVotedId = optionId;
+          }
+
+          return {
+            ...post,
+            poll: {
+              ...currentPoll,
+              userVotedId: newUserVotedId,
+              totalVotes: updatedTotalVotes,
+              options: updatedOptions
+            }
+          };
+        }
+        return post;
+      })
+    );
+
+    try {
+      const res = await fetch(`/api/posts/${postId}/poll`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || ''
+        },
+        body: JSON.stringify({ optionId })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.post) {
+        setPosts(prev => 
+          prev.map(p => {
+            if (p.id === postId && data.post?.poll) {
+              return {
+                ...p,
+                poll: {
+                  ...data.post.poll,
+                  userVotedId: data.userVotedId !== undefined ? (data.userVotedId || undefined) : data.post.poll.userVotedId
+                }
+              };
+            }
+            return p;
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Error syncing poll vote to server:', err);
+    }
+  };
+
   // --- FORM SUBMIT HANDLERS ---
 
   // LOGIN PROCESS
@@ -702,12 +819,12 @@ export default function App() {
             initial={{ opacity: 0, y: -40, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl bg-[#120a28]/90 border border-violet-500/40 shadow-[0_8px_32px_rgba(124,58,237,0.3)] backdrop-blur-xl text-xs whitespace-nowrap"
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl bg-[#080d1a]/90 border border-cyan-500/40 shadow-[0_8px_32px_rgba(0,217,255,0.25)] backdrop-blur-xl text-xs whitespace-nowrap"
             id="global-toast-alert"
           >
             {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
             {toast.type === 'error' && <ShieldAlert className="w-4 h-4 text-rose-400" />}
-            {toast.type === 'info' && <Sparkles className="w-4 h-4 text-violet-300" />}
+            {toast.type === 'info' && <Sparkles className="w-4 h-4 text-cyan-300" />}
             <span className="font-semibold tracking-wide text-white">{toast.message}</span>
           </motion.div>
         )}
@@ -720,18 +837,18 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-[#070510]/90 backdrop-blur-2xl z-50 flex flex-col items-center justify-center p-6"
+            className="fixed inset-0 bg-[#050811]/90 backdrop-blur-2xl z-50 flex flex-col items-center justify-center p-6"
             id="global-loader-overlay"
           >
             <div className="relative flex flex-col items-center">
               <div className="relative w-24 h-24 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-2 border-violet-500/20" />
+                <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20" />
                 <motion.div 
-                  className="absolute inset-0 rounded-full border-t-2 border-r-2 border-violet-400 shadow-[0_0_20px_rgba(168,85,247,0.5)]"
+                  className="absolute inset-0 rounded-full border-t-2 border-r-2 border-cyan-400 shadow-[0_0_20px_rgba(0,217,255,0.4)]"
                   animate={{ rotate: 360 }}
                   transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                 />
-                <Sparkles className="w-8 h-8 text-violet-300 animate-pulse" />
+                <Sparkles className="w-8 h-8 text-cyan-300 animate-pulse" />
               </div>
 
               <motion.h3 
@@ -747,7 +864,7 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="mt-2 text-xs text-violet-300/80 font-medium tracking-wide animate-pulse text-center max-w-xs"
+                className="mt-2 text-xs text-cyan-300/80 font-medium tracking-wide animate-pulse text-center max-w-xs"
               >
                 {submitMessage}
               </motion.p>
@@ -768,11 +885,11 @@ export default function App() {
           >
             {/* LEFT SECTION (Branding Panel - 42% on Desktop, Compact Header on Tablet/Mobile) */}
             <div 
-              className="w-full lg:w-[42%] flex flex-col justify-between p-2.5 sm:p-4 lg:p-10 relative border-b border-violet-500/15 lg:border-b-0 lg:border-r lg:border-violet-500/20 h-auto lg:h-full flex-none overflow-hidden bg-gradient-to-b lg:bg-gradient-to-r from-[#0d0722]/80 via-[#090712] to-transparent z-10"
+              className="w-full lg:w-[42%] flex flex-col justify-between p-2.5 sm:p-4 lg:p-10 relative border-b border-cyan-500/15 lg:border-b-0 lg:border-r lg:border-cyan-500/20 h-auto lg:h-full flex-none overflow-hidden bg-gradient-to-b lg:bg-gradient-to-r from-[#070d1e]/80 via-[#060a14] to-transparent z-10"
               id="left-branding-section"
             >
               {/* Top-Left Translucent Wireframe Mask Shield Watermark - Desktop Only */}
-              <div className="hidden lg:block absolute -top-12 -left-12 w-96 h-96 opacity-[0.14] pointer-events-none text-violet-400">
+              <div className="hidden lg:block absolute -top-12 -left-12 w-96 h-96 opacity-[0.14] pointer-events-none text-cyan-400">
                 <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full stroke-current stroke-[1]">
                   <path d="M100 20L170 50V100C170 145 138 178 100 190C62 178 30 145 30 100V50L100 20Z" />
                   <path d="M60 85C70 80 85 85 90 95C85 98 70 98 60 85Z" fill="currentColor" opacity="0.3" />
@@ -780,8 +897,8 @@ export default function App() {
                 </svg>
               </div>
 
-              {/* Cinematic ambient purple light flare */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 lg:w-96 h-80 lg:h-96 rounded-full bg-violet-600/20 blur-[100px] lg:blur-[120px] pointer-events-none" />
+              {/* Cinematic ambient cyan light flare */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 lg:w-96 h-80 lg:h-96 rounded-full bg-cyan-500/15 blur-[100px] lg:blur-[120px] pointer-events-none" />
 
               <div className="flex flex-col items-center text-center z-10 max-w-md mx-auto my-0 lg:my-auto space-y-2 md:space-y-2.5 lg:space-y-6">
                 {/* Floating Futuristic Shield Logo */}
@@ -795,7 +912,7 @@ export default function App() {
 
                 {/* Typography: INCÓGNITO */}
                 <div className="space-y-1 md:space-y-1.5">
-                  <h1 className="text-[32px] md:text-[40px] lg:text-5xl font-black font-display tracking-[0.16em] md:tracking-[0.18em] leading-none bg-clip-text text-transparent bg-gradient-to-r from-white via-violet-100 to-purple-300 uppercase drop-shadow-[0_0_30px_rgba(168,85,247,0.8)]">
+                  <h1 className="text-[32px] md:text-[40px] lg:text-5xl font-black font-display tracking-[0.16em] md:tracking-[0.18em] leading-none bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-100 to-blue-300 uppercase drop-shadow-[0_0_30px_rgba(0,217,255,0.6)]">
                     INCÓGNITO
                   </h1>
 
@@ -803,7 +920,7 @@ export default function App() {
                   <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-[14px] lg:text-sm font-bold uppercase tracking-[0.18em] md:tracking-[0.2em] lg:tracking-[0.22em] text-white/70">
                     <span>ANONYMOUS.</span>
                     <span>HONEST.</span>
-                    <span className="text-[#C084FC] drop-shadow-[0_0_12px_rgba(192,132,252,0.9)] font-black">
+                    <span className="text-[#00D9FF] drop-shadow-[0_0_12px_rgba(0,217,255,0.8)] font-black">
                       UNFILTERED.
                     </span>
                   </div>
@@ -814,11 +931,11 @@ export default function App() {
                   <motion.div 
                     whileHover={{ y: -3, scale: 1.01 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="p-3.5 rounded-2xl bg-[#0e0a24]/60 border border-violet-500/25 backdrop-blur-xl flex items-center justify-between gap-3 text-left shadow-[0_8px_32px_rgba(124,58,237,0.15)] hover:border-violet-400/50 hover:bg-[#130d30]/70 transition-all cursor-pointer group"
+                    className="p-3.5 rounded-2xl bg-[#081022]/60 border border-cyan-500/25 backdrop-blur-xl flex items-center justify-between gap-3 text-left shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-cyan-400/50 hover:bg-[#0d172e]/70 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-violet-500/20 text-violet-300 border border-violet-500/30 flex-shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                        <ShieldCheck className="w-5 h-5 text-violet-300" />
+                      <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex-shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(0,217,255,0.25)]">
+                        <ShieldCheck className="w-5 h-5 text-cyan-300" />
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white tracking-wide">Zero Identity Telemetry</h4>
@@ -832,11 +949,11 @@ export default function App() {
                   <motion.div 
                     whileHover={{ y: -3, scale: 1.01 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="p-3.5 rounded-2xl bg-[#0e0a24]/60 border border-violet-500/25 backdrop-blur-xl flex items-center justify-between gap-3 text-left shadow-[0_8px_32px_rgba(124,58,237,0.15)] hover:border-cyan-400/50 hover:bg-[#130d30]/70 transition-all cursor-pointer group"
+                    className="p-3.5 rounded-2xl bg-[#081022]/60 border border-cyan-500/25 backdrop-blur-xl flex items-center justify-between gap-3 text-left shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-cyan-400/50 hover:bg-[#0d172e]/70 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex-shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(56,189,248,0.3)]">
-                        <Sparkles className="w-5 h-5 text-cyan-300" />
+                      <div className="p-2.5 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 flex-shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(35,136,255,0.25)]">
+                        <Sparkles className="w-5 h-5 text-blue-300" />
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white tracking-wide">AI Neural Personas</h4>
@@ -850,11 +967,11 @@ export default function App() {
                   <motion.div 
                     whileHover={{ y: -3, scale: 1.01 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="p-3.5 rounded-2xl bg-[#0e0a24]/60 border border-violet-500/25 backdrop-blur-xl flex items-center justify-between gap-3 text-left shadow-[0_8px_32px_rgba(124,58,237,0.15)] hover:border-indigo-400/50 hover:bg-[#130d30]/70 transition-all cursor-pointer group"
+                    className="p-3.5 rounded-2xl bg-[#081022]/60 border border-cyan-500/25 backdrop-blur-xl flex items-center justify-between gap-3 text-left shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-cyan-400/50 hover:bg-[#0d172e]/70 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex-shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(129,140,248,0.3)]">
-                        <KeyRound className="w-5 h-5 text-indigo-300" />
+                      <div className="p-2.5 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/30 flex-shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(20,184,166,0.25)]">
+                        <KeyRound className="w-5 h-5 text-teal-300" />
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white tracking-wide">Hardware TOTP & 2FA</h4>
@@ -868,8 +985,8 @@ export default function App() {
 
                 {/* Glowing Floor Stage Portal Platform Ring - Hidden on Mobile & Tablet */}
                 <div className="hidden lg:flex relative w-full h-8 mt-2 items-center justify-center pointer-events-none">
-                  <div className="w-48 h-5 rounded-[100%] border border-violet-400/50 bg-gradient-to-r from-purple-500/20 via-violet-500/30 to-indigo-500/20 blur-[1px] shadow-[0_0_25px_rgba(168,85,247,0.6)]" />
-                  <div className="absolute w-32 h-2 rounded-[100%] bg-violet-400 blur-sm animate-pulse" />
+                  <div className="w-48 h-5 rounded-[100%] border border-cyan-400/50 bg-gradient-to-r from-blue-500/20 via-cyan-500/30 to-teal-500/20 blur-[1px] shadow-[0_0_25px_rgba(0,217,255,0.4)]" />
+                  <div className="absolute w-32 h-2 rounded-[100%] bg-cyan-400 blur-sm animate-pulse" />
                 </div>
               </div>
             </div>
@@ -884,15 +1001,15 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="w-[92%] sm:w-[90%] lg:w-full max-w-[490px] p-[1.5px] rounded-[24px] sm:rounded-[32px] bg-gradient-to-b from-violet-500/70 via-purple-500/40 to-violet-600/60 shadow-[0_0_50px_rgba(168,85,247,0.4)] relative my-1 sm:my-3 lg:my-auto mx-auto mt-3 md:mt-4 lg:mt-0"
+                className="w-[92%] sm:w-[90%] lg:w-full max-w-[490px] p-[1.5px] rounded-[24px] sm:rounded-[32px] bg-gradient-to-b from-blue-500/70 via-cyan-500/40 to-teal-600/60 shadow-[0_0_50px_rgba(0,217,255,0.3)] relative my-1 sm:my-3 lg:my-auto mx-auto mt-3 md:mt-4 lg:mt-0"
               >
                 {/* Inner Glassmorphism Card */}
                 <div
-                  className="w-full bg-[#0b081b]/90 backdrop-blur-2xl rounded-[22px] sm:rounded-[30px] p-3 sm:p-5 lg:p-8 relative flex flex-col justify-between overflow-hidden"
+                  className="w-full bg-[#080d1a]/90 backdrop-blur-2xl rounded-[22px] sm:rounded-[30px] p-3 sm:p-5 lg:p-8 relative flex flex-col justify-between overflow-hidden"
                   id="auth-card"
                 >
                   {/* Top Glass Highlight Reflection Beam */}
-                  <div className="absolute top-0 left-1/6 right-1/6 h-[1px] bg-gradient-to-r from-transparent via-violet-300/80 to-transparent pointer-events-none" />
+                  <div className="absolute top-0 left-1/6 right-1/6 h-[1px] bg-gradient-to-r from-transparent via-cyan-300/80 to-transparent pointer-events-none" />
                   
                   {/* Card Header & Encrypted Top-Right Badge */}
                   <div className="text-left mb-2 sm:mb-3 lg:mb-4 flex-none" id="card-welcome-header">
@@ -900,8 +1017,8 @@ export default function App() {
                       <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-display text-white tracking-wide">
                         {authTab === 'login' ? 'Portal Gateway' : authTab === 'signup' ? 'Forge Persona' : 'Account Recovery'}
                       </h2>
-                      <span className="px-2.5 py-0.5 rounded-full bg-violet-950/60 border border-violet-400/40 text-[9px] sm:text-[10px] font-black text-violet-300 uppercase tracking-widest flex items-center gap-1 shadow-[0_0_15px_rgba(168,85,247,0.25)]">
-                        <ShieldCheck className="w-3 h-3 text-violet-400" />
+                      <span className="px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-400/40 text-[9px] sm:text-[10px] font-black text-cyan-300 uppercase tracking-widest flex items-center gap-1 shadow-[0_0_15px_rgba(0,217,255,0.25)]">
+                        <ShieldCheck className="w-3 h-3 text-cyan-400" />
                         🛡 ENCRYPTED
                       </span>
                     </div>
@@ -923,7 +1040,7 @@ export default function App() {
                         onClick={() => { setAuthTab('login'); setRecoveryNotice(null); }}
                         className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
                           authTab === 'login'
-                            ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                            ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white shadow-[0_0_15px_rgba(0,217,255,0.4)]'
                             : 'text-white/40 hover:text-white'
                         }`}
                         id="tab-login-btn"
@@ -935,7 +1052,7 @@ export default function App() {
                         onClick={() => { setAuthTab('signup'); setRecoveryNotice(null); }}
                         className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
                           authTab === 'signup'
-                            ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                            ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white shadow-[0_0_15px_rgba(0,217,255,0.4)]'
                             : 'text-white/40 hover:text-white'
                         }`}
                         id="tab-signup-btn"
@@ -961,17 +1078,17 @@ export default function App() {
                   >
                     {authTab === 'recover' ? (
                       <div className="space-y-3 text-left my-auto">
-                        <div className="p-3 bg-violet-950/40 border border-violet-500/30 rounded-xl text-xs text-violet-200/90 leading-relaxed">
-                          <div className="flex items-center gap-2 text-violet-300 font-bold mb-1">
-                            <ShieldAlert className="w-4 h-4 text-violet-400" />
+                        <div className="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-xl text-xs text-cyan-200/90 leading-relaxed">
+                          <div className="flex items-center gap-2 text-cyan-300 font-bold mb-1">
+                            <ShieldAlert className="w-4 h-4 text-cyan-400" />
                             <span>Non-Enumerative Reset Gateway</span>
                           </div>
                           To protect user privacy and prevent credential enumeration attacks, generic recovery feedback is rendered regardless of account existence.
                         </div>
 
                         <div className="space-y-1">
-                          <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-violet-300/90 font-bold flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-violet-400" />
+                          <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-cyan-300/90 font-bold flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-cyan-400" />
                             <span>ACCOUNT EMAIL OR HANDLE</span>
                           </label>
                           <input
@@ -979,7 +1096,7 @@ export default function App() {
                             value={recoveryIdentifier}
                             onChange={(e) => setRecoveryIdentifier(e.target.value)}
                             placeholder="e.g. user@incognito.sec or ShadowNova"
-                            className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-violet-500/60 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
+                            className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,217,255,0.25)] transition-all"
                             id="input-recovery-identifier"
                           />
                         </div>
@@ -998,7 +1115,7 @@ export default function App() {
                           <button
                             type="submit"
                             disabled={recoveryLoading}
-                            className="w-full py-2.5 min-h-[48px] rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-xs sm:text-sm tracking-wide text-white shadow-[0_6px_25px_rgba(124,58,237,0.45)] flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                            className="w-full py-2.5 min-h-[48px] rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 hover:from-blue-500 hover:to-cyan-500 font-bold text-xs sm:text-sm tracking-wide text-white shadow-[0_6px_25px_rgba(0,217,255,0.35)] flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                             id="recovery-submit-btn"
                           >
                             {recoveryLoading ? (
@@ -1019,7 +1136,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => { setAuthTab('login'); setRecoveryNotice(null); }}
-                            className="text-[10px] text-violet-400 hover:text-violet-300 font-bold uppercase tracking-widest cursor-pointer bg-transparent border-none outline-none"
+                            className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-widest cursor-pointer bg-transparent border-none outline-none"
                           >
                             ← Return to Login
                           </button>
@@ -1035,8 +1152,8 @@ export default function App() {
                         {/* SIGN UP: Unique Username with AI Generator Integration & Random Button merged into input */}
                         {authTab === 'signup' && (
                           <div className="space-y-1 text-left">
-                            <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-violet-300/90 font-bold flex items-center gap-1">
-                              <AtSign className="w-3 h-3 text-violet-400" />
+                            <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-cyan-300/90 font-bold flex items-center gap-1">
+                              <AtSign className="w-3 h-3 text-cyan-400" />
                               <span>UNIQUE HANDLE (PUBLIC)</span>
                             </label>
 
@@ -1046,13 +1163,13 @@ export default function App() {
                                 value={signupUsername}
                                 onChange={(e) => setSignupUsername(e.target.value)}
                                 placeholder="e.g. ShadowFox"
-                                className={`w-full pl-3.5 pr-20 py-2 min-h-[44px] rounded-xl bg-black/50 border text-white placeholder-white/20 text-xs outline-none focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all ${
+                                className={`w-full pl-3.5 pr-20 py-2 min-h-[44px] rounded-xl bg-black/50 border text-white placeholder-white/20 text-xs outline-none focus:shadow-[0_0_15px_rgba(0,217,255,0.25)] transition-all ${
                                   signupUsernameStatus === 'available' ? 'border-emerald-500/50 focus:border-emerald-500' :
-                                  signupUsernameStatus === 'taken' || signupUsernameStatus === 'invalid' ? 'border-rose-500/50 focus:border-rose-500' : 'border-white/10 focus:border-violet-500/60'
+                                  signupUsernameStatus === 'taken' || signupUsernameStatus === 'invalid' ? 'border-rose-500/50 focus:border-rose-500' : 'border-white/10 focus:border-cyan-500/60'
                                 }`}
                               />
                               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                                {checkingUsername && <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />}
+                                {checkingUsername && <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />}
                                 {!checkingUsername && signupUsernameStatus === 'available' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                                 <AIUsernameGenerator
                                   compactIconsOnly
@@ -1092,7 +1209,7 @@ export default function App() {
                                             key={idx}
                                             type="button"
                                             onClick={() => setSignupUsername(sug)}
-                                            className="px-2 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/20 rounded-lg text-[9.5px] font-medium transition-colors cursor-pointer"
+                                            className="px-2 py-0.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 rounded-lg text-[9.5px] font-medium transition-colors cursor-pointer"
                                           >
                                             @{sug}
                                           </button>
@@ -1109,15 +1226,15 @@ export default function App() {
                         {/* EMAIL / MOBILE INPUT WITH COMPACT SELECTOR TOGGLE */}
                         <div className="space-y-1 text-left">
                           <div className="flex items-center justify-between">
-                            <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-violet-300/90 font-bold flex items-center gap-1">
+                            <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-cyan-300/90 font-bold flex items-center gap-1">
                               {(authTab === 'login' ? loginMode === 'email' : signupMode === 'email') ? (
                                 <>
-                                  <Mail className="w-3 h-3 text-violet-400" />
+                                  <Mail className="w-3 h-3 text-cyan-400" />
                                   <span>EMAIL ADDRESS</span>
                                 </>
                               ) : (
                                 <>
-                                  <Smartphone className="w-3 h-3 text-violet-400" />
+                                  <Smartphone className="w-3 h-3 text-cyan-400" />
                                   <span>MOBILE NUMBER</span>
                                 </>
                               )}
@@ -1133,7 +1250,7 @@ export default function App() {
                                 }}
                                 className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
                                   (authTab === 'login' ? loginMode === 'email' : signupMode === 'email')
-                                    ? 'bg-violet-600/40 text-violet-200 border border-violet-500/30'
+                                    ? 'bg-blue-600/40 text-cyan-200 border border-cyan-500/30'
                                     : 'text-white/40 hover:text-white'
                                 }`}
                               >
@@ -1147,7 +1264,7 @@ export default function App() {
                                 }}
                                 className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
                                   (authTab === 'login' ? loginMode === 'phone' : signupMode === 'phone')
-                                    ? 'bg-violet-600/40 text-violet-200 border border-violet-500/30'
+                                    ? 'bg-blue-600/40 text-cyan-200 border border-cyan-500/30'
                                     : 'text-white/40 hover:text-white'
                                 }`}
                               >
@@ -1165,7 +1282,7 @@ export default function App() {
                                 else setSignupEmail(e.target.value);
                               }}
                               placeholder="secure@incognito.io"
-                              className="w-full px-3.5 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-violet-500/60 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
+                              className="w-full px-3.5 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,217,255,0.25)] transition-all"
                             />
                           ) : (
                             <div className="flex gap-2">
@@ -1176,7 +1293,7 @@ export default function App() {
                                     if (authTab === 'login') setIsLoginCountryOpen(!isLoginCountryOpen);
                                     else setIsSignupCountryOpen(!isSignupCountryOpen);
                                   }}
-                                  className="px-2.5 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white text-xs outline-none flex items-center justify-between gap-1 hover:border-violet-500/50 min-w-[85px] h-full cursor-pointer"
+                                  className="px-2.5 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white text-xs outline-none flex items-center justify-between gap-1 hover:border-cyan-500/50 min-w-[85px] h-full cursor-pointer"
                                 >
                                   <span className="flex items-center gap-1">
                                     <span>{authTab === 'login' ? loginCountryCode.flag : signupCountryCode.flag}</span>
@@ -1191,7 +1308,7 @@ export default function App() {
                                       initial={{ opacity: 0, y: 5 }}
                                       animate={{ opacity: 1, y: 2 }}
                                       exit={{ opacity: 0, y: 5 }}
-                                      className="absolute left-0 mt-1 w-56 max-h-48 overflow-y-auto bg-[#0d091e] border border-violet-500/30 rounded-2xl py-1 shadow-2xl z-30"
+                                      className="absolute left-0 mt-1 w-56 max-h-48 overflow-y-auto bg-[#080d1a] border border-cyan-500/30 rounded-2xl py-1 shadow-2xl z-30"
                                     >
                                       {COUNTRY_CODES.map((country, idx) => (
                                         <button
@@ -1206,10 +1323,10 @@ export default function App() {
                                               setIsSignupCountryOpen(false);
                                             }
                                           }}
-                                          className="w-full px-3 py-2 text-xs text-left text-white/80 hover:bg-violet-600/20 flex items-center gap-2 transition-colors cursor-pointer"
+                                          className="w-full px-3 py-2 text-xs text-left text-white/80 hover:bg-cyan-600/20 flex items-center gap-2 transition-colors cursor-pointer"
                                         >
                                           <span>{country.flag}</span>
-                                          <span className="font-bold w-10 text-violet-300">{country.code}</span>
+                                          <span className="font-bold w-10 text-cyan-300">{country.code}</span>
                                           <span className="truncate text-white/50">{country.name}</span>
                                         </button>
                                       ))}
@@ -1226,7 +1343,7 @@ export default function App() {
                                   else setSignupPhone(e.target.value);
                                 }}
                                 placeholder="7700900077"
-                                className="flex-1 px-3.5 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-violet-500/60 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
+                                className="flex-1 px-3.5 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,217,255,0.25)] transition-all"
                               />
                             </div>
                           )}
@@ -1235,8 +1352,8 @@ export default function App() {
                         {/* PASSWORD FIELD */}
                         <div className="space-y-1 text-left">
                           <div className="flex justify-between items-center">
-                            <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-violet-300/90 font-bold flex items-center gap-1">
-                              <Lock className="w-3 h-3 text-violet-400" />
+                            <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-cyan-300/90 font-bold flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-cyan-400" />
                               <span>PASSWORD</span>
                             </label>
                           </div>
@@ -1249,7 +1366,7 @@ export default function App() {
                                 else setSignupPassword(e.target.value);
                               }}
                               placeholder="••••••••"
-                              className="w-full px-3.5 pr-10 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-violet-500/60 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
+                              className="w-full px-3.5 pr-10 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,217,255,0.25)] transition-all"
                             />
                             <button
                               type="button"
@@ -1270,8 +1387,8 @@ export default function App() {
                               exit={{ opacity: 0, height: 0 }}
                               className="space-y-1 text-left overflow-hidden pt-0.5"
                             >
-                              <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-violet-300/90 font-bold flex items-center gap-1">
-                                <Lock className="w-3 h-3 text-violet-400" />
+                              <label className="block text-[9.5px] sm:text-[10px] uppercase tracking-widest text-cyan-300/90 font-bold flex items-center gap-1">
+                                <Lock className="w-3 h-3 text-cyan-400" />
                                 <span>CONFIRM PASSWORD</span>
                               </label>
                               <div className="relative">
@@ -1280,7 +1397,7 @@ export default function App() {
                                   value={signupConfirmPassword}
                                   onChange={(e) => setSignupConfirmPassword(e.target.value)}
                                   placeholder="••••••••"
-                                  className="w-full px-3.5 pr-10 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-violet-500/60 focus:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
+                                  className="w-full px-3.5 pr-10 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,217,255,0.25)] transition-all"
                                 />
                                 <button
                                   type="button"
@@ -1302,7 +1419,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => { setAuthTab('recover'); setRecoveryNotice(null); }}
-                            className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 hover:underline transition-all cursor-pointer bg-transparent border-none outline-none"
+                            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 hover:underline transition-all cursor-pointer bg-transparent border-none outline-none"
                             id="btn-forgot-password-single-line"
                           >
                             Forgot password?
@@ -1318,7 +1435,7 @@ export default function App() {
                               type="checkbox"
                               checked={rememberMe}
                               onChange={() => setRememberMe(!rememberMe)}
-                              className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-violet-500 cursor-pointer"
+                              className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-cyan-500 cursor-pointer"
                             />
                             <span className="text-[11px] sm:text-xs text-white/60 group-hover:text-white transition-colors">
                               Remember session credentials
@@ -1330,10 +1447,10 @@ export default function App() {
                               type="checkbox"
                               checked={agreeToTerms}
                               onChange={() => setAgreeToTerms(!agreeToTerms)}
-                              className="w-3.5 h-3.5 rounded mt-0.5 border-white/20 bg-white/5 accent-violet-500 cursor-pointer"
+                              className="w-3.5 h-3.5 rounded mt-0.5 border-white/20 bg-white/5 accent-cyan-500 cursor-pointer"
                             />
                             <span className="text-[10px] sm:text-[11px] text-white/70 leading-tight group-hover:text-white transition-colors select-none">
-                              I accept the <span className="text-violet-300 font-bold hover:underline">Privacy Charter</span> and verify handle.
+                              I accept the <span className="text-cyan-300 font-bold hover:underline">Privacy Charter</span> and verify handle.
                             </span>
                           </label>
                         )}
@@ -1345,7 +1462,7 @@ export default function App() {
                       {/* Primary CTA Button */}
                       <button
                         type="submit"
-                        className="w-full py-2.5 min-h-[48px] rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-xs sm:text-sm tracking-wide text-white shadow-[0_6px_25px_rgba(124,58,237,0.45)] flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                        className="w-full py-2.5 min-h-[48px] rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 hover:from-blue-500 hover:to-cyan-500 font-bold text-xs sm:text-sm tracking-wide text-white shadow-[0_6px_25px_rgba(0,217,255,0.35)] flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                         id="auth-submit-btn"
                       >
                         <span>{authTab === 'login' ? 'Authenticate & Enter' : 'Forge Cryptographic Persona'}</span>
@@ -1384,7 +1501,7 @@ export default function App() {
             id="auth-success-portal"
           >
             {/* DESKTOP FIXED LEFT SIDEBAR (22% WIDTH) */}
-            <div className="hidden lg:block w-[22%] h-full flex-shrink-0 border-r border-violet-500/15 bg-[#080614]/80 backdrop-blur-2xl z-30 relative">
+            <div className="hidden lg:block w-[22%] h-full flex-shrink-0 border-r border-cyan-500/15 bg-[#050811]/80 backdrop-blur-2xl z-30 relative">
               <LeftSidebar
                 activeTab={sidebarTab}
                 setActiveTab={setSidebarTab}
@@ -1412,7 +1529,7 @@ export default function App() {
                     animate={{ x: 0 }}
                     exit={{ x: '-100%' }}
                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    className="lg:hidden fixed left-0 top-0 bottom-0 w-80 bg-[#080614] border-r border-violet-500/20 z-50 overflow-hidden shadow-2xl"
+                    className="lg:hidden fixed left-0 top-0 bottom-0 w-80 bg-[#050811] border-r border-cyan-500/20 z-50 overflow-hidden shadow-2xl"
                   >
                     <div className="p-2 flex justify-end">
                       <button 
@@ -1462,7 +1579,7 @@ export default function App() {
               />
 
               {/* SCROLLABLE MAIN CONTENT AREA */}
-              <main className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 max-w-5xl w-full mx-auto pb-24 lg:pb-8 custom-scrollbar">
+              <main className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 max-w-5xl w-full mx-auto pb-36 lg:pb-12 custom-scrollbar">
                 <AnimatePresence mode="wait">
                   {sidebarTab === 'home' ? (
                     <motion.div
@@ -1476,6 +1593,7 @@ export default function App() {
                         currentUser={currentUser!}
                         posts={posts}
                         setPosts={setPosts}
+                        onDeletePost={handleDeletePost}
                         onTriggerToast={triggerToast}
                         searchQuery={searchQuery}
                         isAnonymousMode={isAnonymousMode}
@@ -1545,6 +1663,8 @@ export default function App() {
                           triggerToast('Comment added', 'success');
                         }}
                         onReportPost={() => triggerToast('Report received', 'info')}
+                        onDeletePost={handleDeletePost}
+                        onVotePoll={handleVotePoll}
                         onTriggerToast={triggerToast}
                         onOpenSettings={() => setSidebarTab('settings')}
                       />
@@ -1584,7 +1704,7 @@ export default function App() {
                           <button
                             onClick={() => setDashboardTab('security')}
                             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              dashboardTab === 'security' ? 'bg-violet-600 text-white shadow-md' : 'text-white/40 hover:text-white'
+                              dashboardTab === 'security' ? 'bg-cyan-600 text-white shadow-md' : 'text-white/40 hover:text-white'
                             }`}
                           >
                             Security Vault
@@ -1592,7 +1712,7 @@ export default function App() {
                           <button
                             onClick={() => setDashboardTab('username')}
                             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              dashboardTab === 'username' ? 'bg-violet-600 text-white shadow-md' : 'text-white/40 hover:text-white'
+                              dashboardTab === 'username' ? 'bg-cyan-600 text-white shadow-md' : 'text-white/40 hover:text-white'
                             }`}
                           >
                             Change Handle
@@ -1628,55 +1748,46 @@ export default function App() {
               </main>
 
               {/* MOBILE BOTTOM NAVIGATION (VISIBLE ONLY ON SMALL SCREENS) */}
-              <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#080614]/95 border-t border-violet-500/20 backdrop-blur-2xl flex items-center justify-around px-2 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]" id="mobile-bottom-nav">
+              <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-[#050811]/95 border-t border-cyan-500/20 backdrop-blur-2xl grid grid-cols-4 items-center px-2 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]" id="mobile-bottom-nav">
                 <button
                   onClick={() => setSidebarTab('home')}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-colors ${
-                    sidebarTab === 'home' ? 'text-violet-300' : 'text-white/40'
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-[10px] font-bold cursor-pointer transition-colors ${
+                    sidebarTab === 'home' ? 'text-cyan-300' : 'text-white/40 hover:text-white/70'
                   }`}
+                  id="mobile-nav-home"
                 >
-                  <Home className="w-5 h-5" />
+                  <Home className="w-5 h-5 mb-0.5" />
                   <span>Home</span>
                 </button>
 
                 <button
                   onClick={() => setSidebarTab('leaderboard')}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-colors ${
-                    sidebarTab === 'leaderboard' ? 'text-violet-300' : 'text-white/40'
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-[10px] font-bold cursor-pointer transition-colors ${
+                    sidebarTab === 'leaderboard' ? 'text-cyan-300' : 'text-white/40 hover:text-white/70'
                   }`}
+                  id="mobile-nav-leaderboard"
                 >
-                  <Trophy className="w-5 h-5" />
+                  <Trophy className="w-5 h-5 mb-0.5" />
                   <span>Leaderboard</span>
                 </button>
 
                 <button
-                  onClick={() => {
-                    setSidebarTab('home');
-                    setTimeout(() => {
-                      const card = document.getElementById('quick-post-card');
-                      if (card) card.scrollIntoView({ behavior: 'smooth' });
-                    }, 100);
-                  }}
-                  className="flex flex-col items-center justify-center p-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold cursor-pointer shadow-[0_0_15px_rgba(124,58,237,0.5)] -mt-5 border border-violet-300/40"
-                >
-                  <PlusCircle className="w-6 h-6" />
-                </button>
-
-                <button
                   onClick={() => setSidebarTab('messages')}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-colors ${
-                    sidebarTab === 'messages' ? 'text-violet-300' : 'text-white/40'
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-[10px] font-bold cursor-pointer transition-colors ${
+                    sidebarTab === 'messages' ? 'text-cyan-300' : 'text-white/40 hover:text-white/70'
                   }`}
+                  id="mobile-nav-messages"
                 >
-                  <MessageSquare className="w-5 h-5" />
+                  <MessageSquare className="w-5 h-5 mb-0.5" />
                   <span>Messages</span>
                 </button>
 
                 <button
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="flex flex-col items-center justify-center p-1.5 rounded-xl text-[10px] font-bold cursor-pointer text-white/40 hover:text-white"
+                  className="flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-[10px] font-bold cursor-pointer text-white/40 hover:text-white transition-colors"
+                  id="mobile-nav-menu"
                 >
-                  <Menu className="w-5 h-5" />
+                  <Menu className="w-5 h-5 mb-0.5" />
                   <span>Menu</span>
                 </button>
               </div>
@@ -1701,6 +1812,8 @@ export default function App() {
                     triggerToast('Comment added', 'success');
                   }}
                   onReportPost={() => triggerToast('Report received', 'info')}
+                  onDeletePost={handleDeletePost}
+                  onVotePoll={handleVotePoll}
                   onStartDirectMessage={(targetUser) => {
                     setSidebarTab('messages');
                     triggerToast(`Opened encrypted messaging tunnel with @${targetUser}`, 'info');
@@ -1726,11 +1839,19 @@ export default function App() {
               <FloatingPostButton
                 currentUser={currentUser!}
                 onPostCreated={(newPost) => {
-                  setPosts(prev => [newPost, ...prev]);
+                  const postWithOwnership: Post = {
+                    ...newPost,
+                    ownerId: currentUser?.id || newPost.ownerId,
+                    authorUsername: currentUser?.username || newPost.authorUsername
+                  };
+                  setPosts(prev => [postWithOwnership, ...prev]);
                   fetch('/api/posts', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newPost)
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'x-user-id': currentUser?.id || ''
+                    },
+                    body: JSON.stringify(postWithOwnership)
                   }).catch(err => console.error('Error syncing post to network:', err));
                 }}
                 onTriggerToast={triggerToast}

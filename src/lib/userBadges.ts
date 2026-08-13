@@ -54,7 +54,7 @@ export function getStaffRoleBadge(role?: string): BadgeInfo | null {
         type: 'staff',
         label: 'Moderator',
         icon: '🛠️',
-        colorClass: 'bg-purple-500/20 text-purple-300 border-purple-400/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]',
+        colorClass: 'bg-blue-500/20 text-cyan-300 border-cyan-400/50 shadow-[0_0_12px_rgba(0,217,255,0.3)]',
         description: 'Community Moderator maintaining order and reviewing reports.'
       };
     default:
@@ -148,7 +148,7 @@ export function getOgMembershipBadge(isOgMember?: boolean, expiryDate?: string):
     type: 'og',
     label: 'OG',
     icon: '👑',
-    colorClass: 'bg-gradient-to-r from-purple-600/30 via-amber-500/30 to-purple-600/30 text-amber-300 border-amber-400/60 shadow-[0_0_14px_rgba(234,179,8,0.35)] animate-pulse',
+    colorClass: 'bg-gradient-to-r from-blue-600/30 via-amber-500/30 to-cyan-500/30 text-amber-300 border-amber-400/60 shadow-[0_0_14px_rgba(234,179,8,0.35)] animate-pulse',
     description: 'OG Premium Supporter Membership (₹100/mo) - Unlocks exclusive profile cosmetics.'
   };
 }

@@ -348,10 +348,10 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
     <div className="w-full max-w-7xl mx-auto p-6 space-y-6 text-slate-100">
       
       {/* HEADER BANNER */}
-      <div className="bg-gradient-to-r from-slate-950 via-purple-950/40 to-slate-950 border border-purple-500/30 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-slate-950 via-blue-950/40 to-slate-950 border border-cyan-500/30 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-300">
+            <div className="p-3 rounded-xl bg-blue-500/20 border border-cyan-400/30 text-cyan-300">
               <Shield className="w-7 h-7" />
             </div>
             <div>
@@ -362,13 +362,13 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                     <Crown className="w-3 h-3 fill-amber-300" /> Owner Privilege
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-500/20 text-purple-300 border border-purple-400/40 uppercase tracking-wide">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-500/20 text-cyan-300 border border-cyan-400/40 uppercase tracking-wide">
                     Super Admin Privilege
                   </span>
                 )}
               </h1>
               <p className="text-xs text-slate-400 mt-1">
-                Audited Compliance Portal • Staff Member: <span className="text-purple-300 font-mono font-semibold">@{currentUser.username}</span>
+                Audited Compliance Portal • Staff Member: <span className="text-cyan-300 font-mono font-semibold">@{currentUser.username}</span>
               </p>
             </div>
           </div>
@@ -387,7 +387,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
           onClick={() => setActiveTab('dossier')}
           className={`flex items-center gap-2 px-5 py-3 border-b-2 font-bold text-xs uppercase tracking-wider transition cursor-pointer ${
             activeTab === 'dossier'
-              ? 'border-purple-500 text-purple-300 bg-purple-500/10'
+              ? 'border-cyan-500 text-cyan-300 bg-cyan-500/10'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -397,7 +397,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
           onClick={() => setActiveTab('export')}
           className={`flex items-center gap-2 px-5 py-3 border-b-2 font-bold text-xs uppercase tracking-wider transition cursor-pointer ${
             activeTab === 'export'
-              ? 'border-purple-500 text-purple-300 bg-purple-500/10'
+              ? 'border-cyan-500 text-cyan-300 bg-cyan-500/10'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -407,7 +407,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
           onClick={() => setActiveTab('audit')}
           className={`flex items-center gap-2 px-5 py-3 border-b-2 font-bold text-xs uppercase tracking-wider transition cursor-pointer ${
             activeTab === 'audit'
-              ? 'border-purple-500 text-purple-300 bg-purple-500/10'
+              ? 'border-cyan-500 text-cyan-300 bg-cyan-500/10'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -422,7 +422,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
           {/* LEFT: USER SELECTOR & REASON */}
           <div className="lg:col-span-4 space-y-4">
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
                 <Search className="w-4 h-4" /> Target User Search
               </h2>
 
@@ -433,7 +433,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                   placeholder="Search username, email, phone, ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
@@ -444,12 +444,12 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                     onClick={() => setSelectedUserId(acc.id)}
                     className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between transition cursor-pointer ${
                       selectedUserId === acc.id
-                        ? 'bg-purple-600/20 border border-purple-500/50 text-white'
+                        ? 'bg-cyan-600/20 border border-cyan-500/50 text-white'
                         : 'bg-slate-950/60 border border-slate-800/80 text-slate-300 hover:bg-slate-800/50'
                     }`}
                   >
                     <div>
-                      <div className="font-bold text-xs text-purple-300">@{acc.username}</div>
+                      <div className="font-bold text-xs text-cyan-300">@{acc.username}</div>
                       <div className="text-[10px] text-slate-400 truncate max-w-[180px]">{acc.email || acc.phone || acc.id}</div>
                     </div>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
@@ -468,7 +468,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                   value={accessReason}
                   onChange={(e) => setAccessReason(e.target.value)}
                   placeholder="e.g. Subpoena #8492, TOS Safety Review..."
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
                 />
                 <p className="text-[10px] text-slate-500 italic">
                   Note: Viewing this dossier generates a permanent, unalterable record in the audit log.
@@ -481,7 +481,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
           <div className="lg:col-span-8 space-y-6">
             {isLoading ? (
               <div className="p-12 bg-slate-900 border border-slate-800 rounded-2xl text-center text-slate-400">
-                <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-3" />
+                <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full mx-auto mb-3" />
                 Loading Verified Legal Compliance Dossier...
               </div>
             ) : legalData ? (
@@ -491,9 +491,9 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <User className="w-4 h-4 text-purple-400" /> Account Identity & Verification Profile
+                      <User className="w-4 h-4 text-cyan-400" /> Account Identity & Verification Profile
                     </h3>
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                       {legalData.accountStatus.statusLabel}
                     </span>
                   </div>
@@ -501,7 +501,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                     <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                       <span className="text-slate-500 block text-[10px] font-bold uppercase">Account ID</span>
-                      <span className="font-mono text-purple-300 font-semibold">{legalData.id}</span>
+                      <span className="font-mono text-cyan-300 font-semibold">{legalData.id}</span>
                     </div>
 
                     <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
@@ -516,21 +516,21 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
 
                     <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                       <span className="text-slate-500 block text-[10px] font-bold uppercase flex items-center gap-1">
-                        <Mail className="w-3 h-3 text-purple-400" /> Registered Email Address
+                        <Mail className="w-3 h-3 text-cyan-400" /> Registered Email Address
                       </span>
                       <span className="font-mono text-slate-200 font-medium">{legalData.registeredEmail}</span>
                     </div>
 
                     <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                       <span className="text-slate-500 block text-[10px] font-bold uppercase flex items-center gap-1">
-                        <Phone className="w-3 h-3 text-purple-400" /> Verified Mobile Number
+                        <Phone className="w-3 h-3 text-cyan-400" /> Verified Mobile Number
                       </span>
                       <span className="font-mono text-slate-200 font-medium">{legalData.verifiedMobile}</span>
                     </div>
 
                     <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                       <span className="text-slate-500 block text-[10px] font-bold uppercase flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-purple-400" /> Account Creation Date
+                        <Calendar className="w-3 h-3 text-cyan-400" /> Account Creation Date
                       </span>
                       <span className="font-semibold text-slate-200">{legalData.creationDate}</span>
                     </div>
@@ -565,7 +565,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                 {/* TELEMETRY & HISTORY */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-                    <Globe className="w-4 h-4 text-purple-400" /> Login & IP Address Telemetry History
+                    <Globe className="w-4 h-4 text-cyan-400" /> Login & IP Address Telemetry History
                   </h3>
 
                   <div className="overflow-x-auto">
@@ -584,7 +584,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                         {legalData.loginHistory.map((lh) => (
                           <tr key={lh.id} className="hover:bg-slate-800/30">
                             <td className="p-2 text-slate-300">{lh.timestamp}</td>
-                            <td className="p-2 text-purple-300 font-bold">{lh.ipAddress}</td>
+                            <td className="p-2 text-cyan-300 font-bold">{lh.ipAddress}</td>
                             <td className="p-2 text-slate-300">{lh.method}</td>
                             <td className="p-2 text-slate-400 truncate max-w-[150px]">{lh.deviceInfo}</td>
                             <td className="p-2">
@@ -628,7 +628,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-purple-400" /> Private Messages Investigation Gateway
+                      <MessageSquare className="w-4 h-4 text-cyan-400" /> Private Messages Investigation Gateway
                     </h3>
                     
                     {/* OWNER INVESTIGATION TOGGLE */}
@@ -664,7 +664,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                       legalData.privateMessages.map((pm) => (
                         <div key={pm.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1 text-xs">
                           <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-bold text-purple-300">
+                            <span className="font-bold text-cyan-300">
                               @{pm.senderUsername} ➔ @{pm.recipientUsername}
                             </span>
                             <div className="flex items-center gap-2">
@@ -706,7 +706,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
         <div className="max-w-3xl mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
           <div className="border-b border-slate-800 pb-4">
             <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-purple-400" /> Formal Legal Request Export Generator
+              <FileText className="w-5 h-5 text-cyan-400" /> Formal Legal Request Export Generator
             </h2>
             <p className="text-xs text-slate-400 mt-1">
               Export verified user compliance dossiers for law enforcement, regulatory compliance, or legal counsel.
@@ -722,7 +722,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-purple-300 font-bold focus:outline-none focus:border-purple-500 cursor-pointer"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 cursor-pointer"
               >
                 {accounts.map(acc => (
                   <option key={acc.id} value={acc.id}>
@@ -742,7 +742,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                 onChange={(e) => setExportReason(e.target.value)}
                 rows={3}
                 placeholder="e.g. Federal Law Enforcement Subpoena #8492-B, Court Order Enforcement, GDPR Compliance..."
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
 
@@ -757,7 +757,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                     type="checkbox"
                     checked={exportScope.profile}
                     onChange={(e) => setExportScope({ ...exportScope, profile: e.target.checked })}
-                    className="accent-purple-500"
+                    className="accent-cyan-500"
                   />
                   <span>Account Profile & Identity</span>
                 </label>
@@ -766,7 +766,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                     type="checkbox"
                     checked={exportScope.telemetry}
                     onChange={(e) => setExportScope({ ...exportScope, telemetry: e.target.checked })}
-                    className="accent-purple-500"
+                    className="accent-cyan-500"
                   />
                   <span>Login & IP Telemetry</span>
                 </label>
@@ -775,7 +775,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                     type="checkbox"
                     checked={exportScope.reports}
                     onChange={(e) => setExportScope({ ...exportScope, reports: e.target.checked })}
-                    className="accent-purple-500"
+                    className="accent-cyan-500"
                   />
                   <span>Reports & Moderation History</span>
                 </label>
@@ -784,7 +784,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                     type="checkbox"
                     checked={exportScope.content}
                     onChange={(e) => setExportScope({ ...exportScope, content: e.target.checked })}
-                    className="accent-purple-500"
+                    className="accent-cyan-500"
                   />
                   <span>Public & Deleted Content</span>
                 </label>
@@ -802,7 +802,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                   onClick={() => setExportFormat('PDF')}
                   className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
                     exportFormat === 'PDF'
-                      ? 'bg-purple-600/20 border-purple-500 text-purple-300 font-bold'
+                      ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 font-bold'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -815,7 +815,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                   onClick={() => setExportFormat('CSV')}
                   className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
                     exportFormat === 'CSV'
-                      ? 'bg-purple-600/20 border-purple-500 text-purple-300 font-bold'
+                      ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 font-bold'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -828,7 +828,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                   onClick={() => setExportFormat('JSON')}
                   className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
                     exportFormat === 'JSON'
-                      ? 'bg-purple-600/20 border-purple-500 text-purple-300 font-bold'
+                      ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 font-bold'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -842,7 +842,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
             <button
               onClick={handleGenerateExport}
               disabled={isExporting}
-              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isExporting ? (
                 <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
@@ -854,8 +854,8 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
           </div>
 
           {lastExport && (
-            <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 text-xs space-y-1">
-              <div className="font-bold text-purple-300 flex items-center gap-1.5">
+            <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-xs space-y-1">
+              <div className="font-bold text-cyan-300 flex items-center gap-1.5">
                 <CheckCircle className="w-4 h-4 text-emerald-400" /> Export Generated Successfully
               </div>
               <div className="text-[11px] text-slate-300 font-mono">
@@ -872,13 +872,13 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-                <History className="w-5 h-5 text-purple-400" /> Cryptographic Immutable Audit Trail
+                <History className="w-5 h-5 text-cyan-400" /> Cryptographic Immutable Audit Trail
               </h2>
               <p className="text-xs text-slate-400 mt-1">
                 Every access to private compliance data and legal export generation is permanently logged and unalterable.
               </p>
             </div>
-            <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-purple-300">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-300">
               Strict Immutability Enforced
             </div>
           </div>
@@ -899,7 +899,7 @@ export const LegalCompliancePortal: React.FC<LegalCompliancePortalProps> = ({
                 {auditLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-800/30">
                     <td className="p-3 text-slate-500">{log.id}</td>
-                    <td className="p-3 text-purple-300 font-bold">
+                    <td className="p-3 text-cyan-300 font-bold">
                       @{log.actorUsername} ({log.role || log.staffRole || 'admin'})
                     </td>
                     <td className="p-3 text-slate-200 font-semibold">{log.userAccountAccessed || log.targetResource}</td>

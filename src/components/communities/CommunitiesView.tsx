@@ -166,14 +166,14 @@ export default function CommunitiesView({
   return (
     <div className="space-y-6 text-left" id="communities-view-container">
       {/* BANNER HEADER */}
-      <div className="relative rounded-3xl bg-gradient-to-r from-violet-900/40 via-purple-950/60 to-indigo-900/40 border border-violet-500/25 p-6 sm:p-8 overflow-hidden backdrop-blur-2xl shadow-[0_20px_50px_rgba(124,58,237,0.2)]">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative rounded-3xl bg-gradient-to-r from-blue-950/60 via-[#0D1320] to-cyan-950/40 border border-cyan-500/25 p-6 sm:p-8 overflow-hidden backdrop-blur-2xl shadow-[0_20px_50px_rgba(22,119,255,0.2)]">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 font-mono text-[11px] font-bold flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-violet-400" /> Persistent Hubs
+              <span className="px-3 py-1 rounded-full bg-blue-500/20 border border-cyan-500/30 text-cyan-300 font-mono text-[11px] font-bold flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-cyan-400" /> Persistent Hubs
               </span>
               <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] font-bold flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-emerald-400" /> E2E Encrypted
@@ -190,7 +190,7 @@ export default function CommunitiesView({
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-xs tracking-wide shadow-[0_0_25px_rgba(124,58,237,0.4)] flex items-center justify-center gap-2 transition-all hover:scale-105 cursor-pointer shrink-0"
+            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs tracking-wide shadow-[0_0_25px_rgba(22,119,255,0.4)] flex items-center justify-center gap-2 transition-all hover:scale-105 cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Create Community</span>
@@ -199,7 +199,7 @@ export default function CommunitiesView({
       </div>
 
       {/* FILTER & TABS TOOLBAR */}
-      <div className="p-4 rounded-2xl bg-[#0d0822]/80 border border-violet-500/20 backdrop-blur-xl shadow-lg space-y-3">
+      <div className="p-4 rounded-2xl bg-[#0D1320]/80 border border-cyan-500/20 backdrop-blur-xl shadow-lg space-y-3">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Main View Tabs */}
           <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10 w-full sm:w-auto">
@@ -207,18 +207,18 @@ export default function CommunitiesView({
               onClick={() => setActiveTab('discover')}
               className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'discover'
-                  ? 'bg-violet-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              <Compass className="w-3.5 h-3.5 text-violet-300" /> Discover All
+              <Compass className="w-3.5 h-3.5 text-cyan-300" /> Discover All
             </button>
 
             <button
               onClick={() => setActiveTab('joined')}
               className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'joined'
-                  ? 'bg-violet-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'text-white/60 hover:text-white'
               }`}
             >
@@ -229,7 +229,7 @@ export default function CommunitiesView({
               onClick={() => setActiveTab('popular')}
               className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'popular'
-                  ? 'bg-violet-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'text-white/60 hover:text-white'
               }`}
             >
@@ -245,7 +245,7 @@ export default function CommunitiesView({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search communities by name or handle..."
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/40 text-xs outline-none focus:border-violet-500 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/40 text-xs outline-none focus:border-cyan-500 transition-all"
             />
           </div>
         </div>
@@ -254,7 +254,7 @@ export default function CommunitiesView({
         {categories.length > 0 && (
           <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pt-2 border-t border-white/10">
             <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider mr-1 flex items-center gap-1 shrink-0">
-              <Filter className="w-3 h-3 text-violet-400" /> Category:
+              <Filter className="w-3 h-3 text-cyan-400" /> Category:
             </span>
             {categories.map((cat) => (
               <button
@@ -262,7 +262,7 @@ export default function CommunitiesView({
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                   selectedCategory === cat
-                    ? 'bg-violet-500/25 border border-violet-500/50 text-violet-200'
+                    ? 'bg-blue-500/25 border border-cyan-500/50 text-cyan-200'
                     : 'bg-white/5 border border-white/10 text-white/60 hover:text-white'
                 }`}
               >
@@ -276,12 +276,12 @@ export default function CommunitiesView({
       {/* COMMUNITIES GRID */}
       {isLoading ? (
         <div className="p-16 text-center text-white/40 text-xs flex flex-col items-center gap-3">
-          <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
           <span>Fetching encrypted communities...</span>
         </div>
       ) : filteredCommunities.length === 0 ? (
-        <div className="p-16 rounded-3xl bg-[#0d0822]/60 border border-violet-500/10 text-center space-y-3">
-          <Users className="w-10 h-10 text-violet-400/40 mx-auto" />
+        <div className="p-16 rounded-3xl bg-[#0D1320]/60 border border-cyan-500/10 text-center space-y-3">
+          <Users className="w-10 h-10 text-cyan-400/40 mx-auto" />
           <h4 className="text-base font-bold text-white">No Communities Found</h4>
           <p className="text-xs text-white/50 max-w-sm mx-auto">
             {activeTab === 'joined'
@@ -290,7 +290,7 @@ export default function CommunitiesView({
           </p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-md"
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-md"
           >
             <Plus className="w-4 h-4" /> Create a Community
           </button>

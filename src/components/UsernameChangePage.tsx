@@ -444,7 +444,7 @@ export default function UsernameChangePage({
                     <button
                       type="button"
                       onClick={() => setShowAiDrawer(!showAiDrawer)}
-                      className="w-full p-3 rounded-xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-indigo-500/10 hover:from-cyan-500/20 hover:to-indigo-500/20 border border-cyan-500/20 text-xs font-bold text-cyan-300 flex items-center justify-between transition-all cursor-pointer"
+                      className="w-full p-3 rounded-xl bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-teal-500/10 hover:from-cyan-500/20 hover:to-teal-500/20 border border-cyan-500/20 text-xs font-bold text-cyan-300 flex items-center justify-between transition-all cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -505,7 +505,7 @@ export default function UsernameChangePage({
                 className="glass-panel p-6 sm:p-8 rounded-2xl border border-cyan-500/30 space-y-6 relative overflow-hidden"
               >
                 {/* Neon Top Edge Accent */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500" />
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-teal-400" />
 
                 <div>
                   <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[9px] font-bold uppercase tracking-wider inline-flex items-center gap-1 mb-2">

@@ -27,6 +27,8 @@ interface ProfileViewProps {
   onSave: (postId: string) => void;
   onAddComment: (postId: string, commentText: string) => void;
   onReportPost: (postId: string) => void;
+  onDeletePost?: (postId: string) => void;
+  onVotePoll?: (postId: string, optionId: string) => void;
   onTriggerToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   onOpenSettings: () => void;
 }
@@ -38,6 +40,8 @@ export default function ProfileView({
   onSave,
   onAddComment,
   onReportPost,
+  onDeletePost,
+  onVotePoll,
   onTriggerToast,
   onOpenSettings
 }: ProfileViewProps) {
@@ -45,8 +49,8 @@ export default function ProfileView({
     <div className="space-y-6 text-left py-2" id="profile-view-container">
       
       {/* PROFILE HEADER HERO CARD */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-violet-950/60 via-purple-900/40 to-indigo-950/60 border border-violet-500/30 relative overflow-hidden backdrop-blur-2xl shadow-2xl">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-950/60 via-slate-900/60 to-cyan-950/60 border border-cyan-500/30 relative overflow-hidden backdrop-blur-2xl shadow-2xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 relative z-10">
           
@@ -56,14 +60,14 @@ export default function ProfileView({
               <img 
                 src={currentUser.avatarUrl} 
                 alt={currentUser.username} 
-                className="w-24 h-24 rounded-full object-cover border-4 border-violet-400/50 shadow-[0_0_25px_rgba(124,58,237,0.4)]"
+                className="w-24 h-24 rounded-full object-cover border-4 border-cyan-400/50 shadow-[0_0_25px_rgba(0,217,255,0.3)]"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-violet-600 via-purple-600 to-indigo-600 flex items-center justify-center text-3xl font-bold font-display text-white border-4 border-violet-400/50 shadow-[0_0_25px_rgba(124,58,237,0.4)]">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-600 via-cyan-600 to-teal-600 flex items-center justify-center text-3xl font-bold font-display text-white border-4 border-cyan-400/50 shadow-[0_0_25px_rgba(0,217,255,0.3)]">
                 {currentUser.username.charAt(0).toUpperCase()}
               </div>
             )}
-            <div className="absolute bottom-1 right-1 p-1.5 rounded-full bg-[#0d091f] border border-emerald-400 text-emerald-400 shadow-md" title="Identity Isolated">
+            <div className="absolute bottom-1 right-1 p-1.5 rounded-full bg-[#080d1a] border border-emerald-400 text-emerald-400 shadow-md" title="Identity Isolated">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
@@ -88,9 +92,9 @@ export default function ProfileView({
               {(currentUser.badges || ['Founding Member', 'Privacy Architect']).map((badge, idx) => (
                 <span 
                   key={idx} 
-                  className="px-2.5 py-1 rounded-xl bg-violet-500/20 border border-violet-400/30 text-violet-200 text-[10px] font-bold flex items-center gap-1 shadow-sm"
+                  className="px-2.5 py-1 rounded-xl bg-cyan-500/20 border border-cyan-400/30 text-cyan-200 text-[10px] font-bold flex items-center gap-1 shadow-sm"
                 >
-                  <Award className="w-3 h-3 text-violet-300" />
+                  <Award className="w-3 h-3 text-cyan-300" />
                   {badge}
                 </span>
               ))}
@@ -122,7 +126,7 @@ export default function ProfileView({
       {/* USER'S POSTED BROADCASTS */}
       <div className="space-y-4">
         <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-violet-400" />
+          <Sparkles className="w-4 h-4 text-cyan-400" />
           Your Broadcast History ({userPosts.length})
         </h3>
 
@@ -136,6 +140,8 @@ export default function ProfileView({
               onSave={onSave}
               onAddComment={onAddComment}
               onReportPost={onReportPost}
+              onDeletePost={onDeletePost}
+              onVotePoll={onVotePoll}
               onTriggerToast={onTriggerToast}
             />
           ))

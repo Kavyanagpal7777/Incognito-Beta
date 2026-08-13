@@ -233,15 +233,15 @@ export default function CommunityDetail({
   return (
     <div className="space-y-6 text-left">
       {/* HEADER BANNER */}
-      <div className="relative rounded-3xl overflow-hidden bg-[#0d0822] border border-violet-500/20 shadow-[0_15px_40px_rgba(0,0,0,0.4)]">
+      <div className="relative rounded-3xl overflow-hidden bg-[#080d1a] border border-cyan-500/20 shadow-[0_15px_40px_rgba(0,0,0,0.4)]">
         {community.bannerUrl ? (
           <div className="h-36 sm:h-48 w-full overflow-hidden relative">
             <img src={community.bannerUrl} alt={community.name} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0d0822] via-[#0d0822]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-[#080d1a]/60 to-transparent" />
           </div>
         ) : (
-          <div className="h-32 sm:h-40 w-full bg-gradient-to-r from-violet-900/60 via-purple-900/40 to-indigo-900/60 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0d0822] to-transparent" />
+          <div className="h-32 sm:h-40 w-full bg-gradient-to-r from-blue-900/60 via-cyan-900/40 to-teal-900/60 relative">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080d1a] to-transparent" />
           </div>
         )}
 
@@ -252,10 +252,10 @@ export default function CommunityDetail({
                 <img
                   src={community.iconUrl}
                   alt={community.name}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-4 border-[#0d0822] shadow-[0_0_25px_rgba(124,58,237,0.4)]"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-4 border-[#080d1a] shadow-[0_0_25px_rgba(0,217,255,0.3)]"
                 />
               ) : (
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-violet-600 via-purple-600 to-indigo-600 flex items-center justify-center font-bold text-white border-4 border-[#0d0822] text-2xl shadow-[0_0_25px_rgba(124,58,237,0.4)] font-mono">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-blue-600 via-cyan-600 to-teal-500 flex items-center justify-center font-bold text-white border-4 border-[#080d1a] text-2xl shadow-[0_0_25px_rgba(0,217,255,0.3)] font-mono">
                   c/{community.handle.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -274,7 +274,7 @@ export default function CommunityDetail({
                   {community.name}
                 </h2>
               </div>
-              <p className="text-xs sm:text-sm font-mono font-bold text-violet-400 mt-0.5">
+              <p className="text-xs sm:text-sm font-mono font-bold text-cyan-400 mt-0.5">
                 c/{community.handle} • <span className="text-white/60 font-sans">{community.category}</span>
               </p>
             </div>
@@ -302,8 +302,8 @@ export default function CommunityDetail({
               }}
               className={`flex-1 sm:flex-none px-6 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 community.isJoined
-                  ? 'bg-violet-600/20 text-violet-300 border border-violet-500/40 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40'
-                  : 'bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white shadow-[0_0_20px_rgba(124,58,237,0.4)]'
+                  ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40'
+                  : 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 text-white shadow-[0_0_20px_rgba(0,217,255,0.4)]'
               }`}
             >
               {community.isJoined ? (
@@ -330,8 +330,8 @@ export default function CommunityDetail({
 
           {community.rules && community.rules.length > 0 && (
             <div className="w-full md:w-72 p-3.5 rounded-2xl bg-black/40 border border-white/10 text-xs shrink-0">
-              <h4 className="font-bold text-violet-200 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5 text-violet-400" /> Community Rules
+              <h4 className="font-bold text-cyan-200 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 text-cyan-400" /> Community Rules
               </h4>
               <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
                 {community.rules.map((rule, idx) => (
@@ -347,21 +347,21 @@ export default function CommunityDetail({
       </div>
 
       {/* CREATE POST CARD & CONTROLS */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-[#0d0822]/80 border border-violet-500/20 backdrop-blur-xl shadow-lg space-y-4">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#080d1a]/80 border border-cyan-500/20 backdrop-blur-xl shadow-lg space-y-4">
         {!isCreatingPost ? (
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-white shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center font-bold text-white shrink-0">
               {currentUser.username.charAt(0).toUpperCase()}
             </div>
             <button
               onClick={() => setIsCreatingPost(true)}
-              className="flex-1 px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-white/40 text-xs font-bold text-left hover:border-violet-500/50 hover:text-white/60 transition-all cursor-pointer"
+              className="flex-1 px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-white/40 text-xs font-bold text-left hover:border-cyan-500/50 hover:text-white/60 transition-all cursor-pointer"
             >
               Post to c/{community.handle}...
             </button>
             <button
               onClick={() => setIsCreatingPost(true)}
-              className="px-4 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+              className="px-4 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
             >
               <Plus className="w-4 h-4" /> Create Post
             </button>
@@ -369,8 +369,8 @@ export default function CommunityDetail({
         ) : (
           <form onSubmit={handleCreatePost} className="space-y-3 text-left">
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-violet-300 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-violet-400" /> Create Community Post
+              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-cyan-400" /> Create Community Post
               </h4>
               <button
                 type="button"
@@ -387,7 +387,7 @@ export default function CommunityDetail({
               value={postTitle}
               onChange={(e) => setPostTitle(e.target.value)}
               placeholder="Title of your post..."
-              className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/15 text-white font-bold text-sm outline-none focus:border-violet-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/15 text-white font-bold text-sm outline-none focus:border-cyan-500"
             />
 
             <textarea
@@ -396,7 +396,7 @@ export default function CommunityDetail({
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
               placeholder="Write your discussion, insights, or code snippet here..."
-              className="w-full p-3.5 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-violet-500 resize-none"
+              className="w-full p-3.5 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-cyan-500 resize-none"
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -405,7 +405,7 @@ export default function CommunityDetail({
                 value={postTags}
                 onChange={(e) => setPostTags(e.target.value)}
                 placeholder="Tags (comma-separated, e.g. privacy, security)"
-                className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-violet-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-cyan-500"
               />
 
               <div className="flex items-center gap-2 justify-end">
@@ -414,7 +414,7 @@ export default function CommunityDetail({
                     type="checkbox"
                     checked={isAnonymous}
                     onChange={(e) => setIsAnonymous(e.target.checked)}
-                    className="rounded border-white/20 bg-black/40 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                    className="rounded border-white/20 bg-black/40 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
                   />
                   <span>Post Anonymously</span>
                 </label>
@@ -432,7 +432,7 @@ export default function CommunityDetail({
               <button
                 type="submit"
                 disabled={isSubmittingPost}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" /> Publish
               </button>
@@ -446,7 +446,7 @@ export default function CommunityDetail({
             <button
               onClick={() => setActiveSort('trending')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeSort === 'trending' ? 'bg-violet-600 text-white shadow' : 'text-white/60 hover:text-white'
+                activeSort === 'trending' ? 'bg-cyan-600 text-white shadow' : 'text-white/60 hover:text-white'
               }`}
             >
               <Flame className="w-3 h-3 text-amber-400" /> Hot
@@ -454,7 +454,7 @@ export default function CommunityDetail({
             <button
               onClick={() => setActiveSort('new')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeSort === 'new' ? 'bg-violet-600 text-white shadow' : 'text-white/60 hover:text-white'
+                activeSort === 'new' ? 'bg-cyan-600 text-white shadow' : 'text-white/60 hover:text-white'
               }`}
             >
               <Clock className="w-3 h-3 text-cyan-400" /> New
@@ -462,7 +462,7 @@ export default function CommunityDetail({
             <button
               onClick={() => setActiveSort('top')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeSort === 'top' ? 'bg-violet-600 text-white shadow' : 'text-white/60 hover:text-white'
+                activeSort === 'top' ? 'bg-cyan-600 text-white shadow' : 'text-white/60 hover:text-white'
               }`}
             >
               <TrendingUp className="w-3 h-3 text-emerald-400" /> Top
@@ -476,7 +476,7 @@ export default function CommunityDetail({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search in c/..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/40 text-xs outline-none focus:border-violet-500"
+              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/40 text-xs outline-none focus:border-cyan-500"
             />
           </div>
         </div>
@@ -489,8 +489,8 @@ export default function CommunityDetail({
             Loading community feed...
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="p-12 rounded-3xl bg-[#0d0822]/60 border border-violet-500/10 text-center space-y-2">
-            <MessageSquare className="w-8 h-8 text-violet-400/40 mx-auto" />
+          <div className="p-12 rounded-3xl bg-[#080d1a]/60 border border-cyan-500/10 text-center space-y-2">
+            <MessageSquare className="w-8 h-8 text-cyan-400/40 mx-auto" />
             <h4 className="text-sm font-bold text-white">No posts in c/{community.handle} yet</h4>
             <p className="text-xs text-white/50 max-w-sm mx-auto">
               Be the first member to start a discussion in this encrypted community.
@@ -502,7 +502,7 @@ export default function CommunityDetail({
               key={post.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-5 rounded-3xl bg-gradient-to-b from-white/[0.04] to-black/40 border border-violet-500/20 backdrop-blur-xl space-y-3 relative overflow-hidden group shadow-md text-left"
+              className="p-5 rounded-3xl bg-gradient-to-b from-white/[0.04] to-black/40 border border-cyan-500/20 backdrop-blur-xl space-y-3 relative overflow-hidden group shadow-md text-left"
             >
               {post.isPinned && (
                 <div className="flex items-center gap-1.5 text-amber-400 text-[11px] font-bold font-mono">
@@ -514,14 +514,14 @@ export default function CommunityDetail({
                 <div className="flex items-center gap-2.5">
                   <div
                     onClick={() => !post.isAnonymous && onSelectUser(post.authorUsername)}
-                    className="w-8 h-8 rounded-xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center font-bold text-white text-xs cursor-pointer"
+                    className="w-8 h-8 rounded-xl bg-cyan-600/30 border border-cyan-500/40 flex items-center justify-center font-bold text-white text-xs cursor-pointer"
                   >
                     {post.authorUsername.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div
                       onClick={() => !post.isAnonymous && onSelectUser(post.authorUsername)}
-                      className="text-xs font-bold text-white hover:text-violet-300 cursor-pointer flex items-center gap-1.5"
+                      className="text-xs font-bold text-white hover:text-cyan-300 cursor-pointer flex items-center gap-1.5"
                     >
                       <span>@{post.authorUsername}</span>
                       {post.isAnonymous && (
@@ -560,7 +560,7 @@ export default function CommunityDetail({
               {post.tags && post.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {post.tags.map((tag, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-mono">
+                    <span key={idx} className="px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] font-mono">
                       #{tag}
                     </span>
                   ))}
@@ -605,11 +605,11 @@ export default function CommunityDetail({
                         onChange={(e) => setCommentInput({ ...commentInput, [post.id]: e.target.value })}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
                         placeholder="Write a comment..."
-                        className="flex-1 px-3.5 py-2 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-violet-500"
+                        className="flex-1 px-3.5 py-2 rounded-xl bg-black/50 border border-white/15 text-white text-xs outline-none focus:border-cyan-500"
                       />
                       <button
                         onClick={() => handleAddComment(post.id)}
-                        className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs cursor-pointer"
+                        className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs cursor-pointer"
                       >
                         Send
                       </button>
@@ -622,7 +622,7 @@ export default function CommunityDetail({
                             <div className="flex items-center justify-between mb-1">
                               <span
                                 onClick={() => onSelectUser(comm.authorUsername)}
-                                className="font-bold text-violet-300 hover:underline cursor-pointer"
+                                className="font-bold text-cyan-300 hover:underline cursor-pointer"
                               >
                                 @{comm.authorUsername}
                               </span>

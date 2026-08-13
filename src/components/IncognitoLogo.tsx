@@ -62,7 +62,7 @@ export default function IncognitoLogo({
       >
         {/* Soft Breathing Glow Aura */}
         <motion.div
-          className="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600/40 via-violet-500/40 to-cyan-500/40 blur-2xl pointer-events-none"
+          className="absolute -inset-4 rounded-full bg-gradient-to-r from-blue-600/40 via-cyan-500/40 to-sky-400/40 blur-2xl pointer-events-none"
           animate={
             animated
               ? {
@@ -80,7 +80,7 @@ export default function IncognitoLogo({
 
         {/* Rotating Neon Orbit Ring Behind Logo */}
         <motion.div
-          className="absolute -inset-3 rounded-full border border-dashed border-violet-400/50 pointer-events-none shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+          className="absolute -inset-3 rounded-full border border-dashed border-cyan-400/50 pointer-events-none shadow-[0_0_15px_rgba(0,217,255,0.4)]"
           animate={animated ? { rotate: [0, 360] } : {}}
           transition={{
             duration: 12,
@@ -91,7 +91,7 @@ export default function IncognitoLogo({
 
         {/* Secondary Outer Counter-Rotating Ring */}
         <motion.div
-          className="absolute -inset-1 rounded-full border border-cyan-400/30 pointer-events-none"
+          className="absolute -inset-1 rounded-full border border-blue-400/30 pointer-events-none"
           animate={animated ? { rotate: [360, 0] } : {}}
           transition={{
             duration: 18,
@@ -102,7 +102,7 @@ export default function IncognitoLogo({
 
         {/* Logo Shield Frame */}
         <div
-          className={`relative flex items-center justify-center bg-gradient-to-br from-[#120a2a] via-[#0b081a] to-[#04020a] border border-violet-400/50 shadow-[0_0_40px_rgba(124,58,237,0.4)] overflow-hidden ${currentSize.container}`}
+          className={`relative flex items-center justify-center bg-gradient-to-br from-[#070B14] via-[#0D1320] to-[#101827] border border-cyan-400/50 shadow-[0_0_40px_rgba(22,119,255,0.4)] overflow-hidden ${currentSize.container}`}
         >
           {/* Animated Glass Reflection Beam Sweep */}
           <motion.div
@@ -154,7 +154,7 @@ export default function IncognitoLogo({
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`font-display font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white via-violet-200 to-purple-400 uppercase drop-shadow-[0_0_20px_rgba(168,85,247,0.6)] ${currentSize.text}`}
+            className={`font-display font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-200 to-blue-400 uppercase drop-shadow-[0_0_20px_rgba(0,217,255,0.6)] ${currentSize.text}`}
           >
             INCÓGNITO
           </motion.h1>
@@ -166,9 +166,9 @@ export default function IncognitoLogo({
               opacity: [0.7, 1, 0.7],
               letterSpacing: ['0.1em', '0.2em', '0.1em'],
               textShadow: [
-                '0 0 10px rgba(168,85,247,0.3)',
-                '0 0 20px rgba(168,85,247,0.7)',
-                '0 0 10px rgba(168,85,247,0.3)'
+                '0 0 10px rgba(0,217,255,0.3)',
+                '0 0 20px rgba(0,217,255,0.7)',
+                '0 0 10px rgba(0,217,255,0.3)'
               ]
             }}
             transition={{
@@ -176,7 +176,7 @@ export default function IncognitoLogo({
               repeat: Infinity,
               ease: 'easeInOut',
             }}
-            className={`text-violet-300/90 font-medium uppercase ${currentSize.subtext}`}
+            className={`text-cyan-300/90 font-medium uppercase ${currentSize.subtext}`}
           >
             "{subTagline}"
           </motion.p>
