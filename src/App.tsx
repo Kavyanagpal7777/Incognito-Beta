@@ -914,47 +914,37 @@ export default function App() {
                     </p>
                   </div>
 
-                {/* LOGIN & SIGN UP & RECOVER SEGMENTED NAV TABS */}
-                <div className="p-1 bg-black/50 border border-white/10 rounded-2xl mb-2.5 sm:mb-3.5 lg:mb-4 w-full flex-none relative" id="nav-tabs-container">
-                  <div className="grid grid-cols-3 gap-1 relative z-10">
-                    <button
-                      type="button"
-                      onClick={() => { setAuthTab('login'); setRecoveryNotice(null); }}
-                      className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                        authTab === 'login'
-                          ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
-                          : 'text-white/40 hover:text-white'
-                      }`}
-                      id="tab-login-btn"
-                    >
-                      <span>LOGIN</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAuthTab('signup'); setRecoveryNotice(null); }}
-                      className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                        authTab === 'signup'
-                          ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
-                          : 'text-white/40 hover:text-white'
-                      }`}
-                      id="tab-signup-btn"
-                    >
-                      <span>SIGN UP</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAuthTab('recover'); setRecoveryNotice(null); }}
-                      className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                        authTab === 'recover'
-                          ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
-                          : 'text-white/40 hover:text-white'
-                      }`}
-                      id="tab-recover-btn"
-                    >
-                      <span>RECOVER</span>
-                    </button>
+                {/* LOGIN & SIGN UP SEGMENTED NAV TABS */}
+                {authTab !== 'recover' && (
+                  <div className="p-1 bg-black/50 border border-white/10 rounded-2xl mb-2.5 sm:mb-3.5 lg:mb-4 w-full flex-none relative" id="nav-tabs-container">
+                    <div className="grid grid-cols-2 gap-1 relative z-10">
+                      <button
+                        type="button"
+                        onClick={() => { setAuthTab('login'); setRecoveryNotice(null); }}
+                        className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          authTab === 'login'
+                            ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                            : 'text-white/40 hover:text-white'
+                        }`}
+                        id="tab-login-btn"
+                      >
+                        <span>LOGIN</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setAuthTab('signup'); setRecoveryNotice(null); }}
+                        className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          authTab === 'signup'
+                            ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                            : 'text-white/40 hover:text-white'
+                        }`}
+                        id="tab-signup-btn"
+                      >
+                        <span>SIGN UP</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* FORM GATEWAY WITH SMOOTH ANIMATED TRANSITION */}
                 <AnimatePresence mode="wait">
@@ -1249,16 +1239,6 @@ export default function App() {
                               <Lock className="w-3 h-3 text-violet-400" />
                               <span>PASSWORD</span>
                             </label>
-                            {authTab === 'login' && (
-                              <button
-                                type="button"
-                                onClick={() => { setAuthTab('recover'); setRecoveryNotice(null); }}
-                                className="text-[9px] font-bold text-violet-400 uppercase tracking-widest hover:underline cursor-pointer bg-transparent border-none outline-none"
-                                id="btn-forgot-password"
-                              >
-                                Forgot?
-                              </button>
-                            )}
                           </div>
                           <div className="relative">
                             <input
@@ -1315,6 +1295,20 @@ export default function App() {
                         </AnimatePresence>
 
                       </div>
+
+                      {/* FORGOT PASSWORD OPTION IN SINGLE LINE JUST ABOVE CHECKBOX */}
+                      {authTab === 'login' && (
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={() => { setAuthTab('recover'); setRecoveryNotice(null); }}
+                            className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 hover:underline transition-all cursor-pointer bg-transparent border-none outline-none"
+                            id="btn-forgot-password-single-line"
+                          >
+                            Forgot password?
+                          </button>
+                        </div>
+                      )}
 
                       {/* REMEMBER ME OR AGREE TO TERMS */}
                       <div className="pt-0.5">
