@@ -159,6 +159,17 @@ interface RateLimitEntry {
 
 const rateLimitMap = new Map<string, RateLimitEntry>();
 
+// IP-based failed login tracking store for incremental delays and temporary blocks
+interface FailedLoginRecord {
+  failedCount: number;
+  firstFailedAt: number;
+  lastFailedAt: number;
+  lockoutUntil?: number;
+  lockoutMultiplier: number;
+}
+
+const failedLoginIpMap = new Map<string, FailedLoginRecord>();
+
 // Periodic garbage collection to purge expired entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
@@ -167,7 +178,121 @@ setInterval(() => {
       rateLimitMap.delete(key);
     }
   }
+
+  for (const [ip, rec] of failedLoginIpMap.entries()) {
+    if (now - rec.lastFailedAt > 60 * 60 * 1000 && (!rec.lockoutUntil || now >= rec.lockoutUntil)) {
+      failedLoginIpMap.delete(ip);
+    }
+  }
 }, 5 * 60 * 1000);
+
+// SERVER-SIDE RATE LIMITING MIDDLEWARE FOR FAILED LOGIN ATTEMPTS (IP-based Tarpitting & Temporary Blocks)
+async function failedLoginRateLimiter(req: any, res: any, next: any) {
+  const clientIp = getCleanIp(req);
+  const now = Date.now();
+  const record = failedLoginIpMap.get(clientIp);
+
+  if (record) {
+    // 1. Temporary Block Enforcement (Lockout Active)
+    if (record.lockoutUntil && now < record.lockoutUntil) {
+      const remainingSecs = Math.ceil((record.lockoutUntil - now) / 1000);
+      res.setHeader("Retry-After", String(remainingSecs));
+
+      console.warn(`[BRUTE_FORCE_DEFENDER] Blocked login attempt from IP ${maskIdentifier(clientIp)}. Lockout active for ${remainingSecs}s.`);
+
+      return res.status(429).json({
+        success: false,
+        error: "RATE_LIMIT_EXCEEDED",
+        message: `Security Lockout Active: Too many failed login attempts from this IP. Please try again in ${remainingSecs} seconds.`,
+        retryAfter: remainingSecs
+      });
+    }
+
+    // 2. Clear expired lockouts
+    if (record.lockoutUntil && now >= record.lockoutUntil) {
+      record.lockoutUntil = undefined;
+      record.failedCount = 0;
+    }
+
+    // 3. Incremental Delay (Tarpitting) for prior failed attempts
+    if (record.failedCount > 0) {
+      const delayMs = Math.min(300 * Math.pow(2, record.failedCount - 1), 3000);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
+  next();
+}
+
+function recordFailedLoginAttempt(clientIp: string, targetIdentifier?: string) {
+  const now = Date.now();
+  let record = failedLoginIpMap.get(clientIp);
+
+  if (!record) {
+    record = {
+      failedCount: 1,
+      firstFailedAt: now,
+      lastFailedAt: now,
+      lockoutMultiplier: 1
+    };
+  } else {
+    if (now - record.lastFailedAt > 30 * 60 * 1000) {
+      record.failedCount = 1;
+      record.firstFailedAt = now;
+    } else {
+      record.failedCount += 1;
+    }
+    record.lastFailedAt = now;
+  }
+
+  // Temporary block threshold: 5 failed attempts from same IP
+  if (record.failedCount >= 5) {
+    const baseLockoutMs = 15 * 60 * 1000; // 15 minutes
+    const durationMs = Math.min(baseLockoutMs * Math.pow(2, record.lockoutMultiplier - 1), 24 * 60 * 60 * 1000);
+    record.lockoutUntil = now + durationMs;
+    record.lockoutMultiplier += 1;
+
+    console.warn(`[SECURITY_LOCKOUT_ENFORCED] IP ${maskIdentifier(clientIp)} locked out for ${Math.ceil(durationMs / 1000)}s after ${record.failedCount} failed attempts.`);
+
+    if (typeof auditLogsStore !== 'undefined') {
+      auditLogsStore.unshift({
+        id: `log_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        actorId: 'system',
+        actorUsername: 'BruteForceDefender',
+        role: 'system',
+        action: 'IP Security Lockout Enforced',
+        targetResource: '/api/auth/login',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        ipAddress: maskIdentifier(clientIp),
+        deviceInfo: "Brute Force Protection Engine",
+        details: `Enforced ${Math.ceil(durationMs / 60000)}-minute temporary block after ${record.failedCount} consecutive failed login attempts.`
+      });
+    }
+  }
+
+  failedLoginIpMap.set(clientIp, record);
+
+  // Maintain per-account lockout key for targeted protection
+  if (targetIdentifier) {
+    const accountLockKey = `lockout_acc_${targetIdentifier.toLowerCase()}`;
+    const accEntry = rateLimitMap.get(accountLockKey) || { count: 0, resetTime: now + 15 * 60 * 1000, failedLoginAttempts: 0 };
+    accEntry.failedLoginAttempts = (accEntry.failedLoginAttempts || 0) + 1;
+    if (accEntry.failedLoginAttempts >= 5) {
+      accEntry.lockoutUntil = now + 15 * 60 * 1000;
+    }
+    rateLimitMap.set(accountLockKey, accEntry);
+  }
+}
+
+function recordSuccessfulLoginAttempt(clientIp: string, targetIdentifier?: string) {
+  // Reset failed login attempt counter on successful password verification
+  failedLoginIpMap.delete(clientIp);
+
+  if (targetIdentifier) {
+    const accountLockKey = `lockout_acc_${targetIdentifier.toLowerCase()}`;
+    rateLimitMap.delete(accountLockKey);
+  }
+}
 
 function getCleanIp(req: any): string {
   const forwarded = req.headers["x-forwarded-for"];
@@ -569,6 +694,119 @@ app.post("/api/ai-assist-post", publicApiRateLimiter, async (req, res) => {
   }
 });
 
+// -------------------------------------------------------------------------
+// PUBLIC POSTS NETWORK SYNC ENDPOINTS
+// -------------------------------------------------------------------------
+
+// GET /api/posts - Fetch all public feed posts across all users
+app.get("/api/posts", (req, res) => {
+  res.json({ success: true, posts: postsStore });
+});
+
+// POST /api/posts - Publish new post to public feed for all users
+app.post("/api/posts", publicApiRateLimiter, (req, res) => {
+  try {
+    const postData = req.body;
+    if (!postData || (!postData.content && !postData.imageUrl && !postData.title)) {
+      return res.status(400).json({ success: false, error: "Post content or media is required." });
+    }
+
+    const newPost = {
+      id: postData.id || `post_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      username: postData.username || 'Anonymous_Ghost',
+      userAvatar: postData.userAvatar,
+      community: postData.community || 'c/Privacy',
+      title: postData.title,
+      content: postData.content || '',
+      imageUrl: postData.imageUrl,
+      timestamp: postData.timestamp || 'Just now',
+      upvotes: typeof postData.upvotes === 'number' ? postData.upvotes : 1,
+      isUpvoted: Boolean(postData.isUpvoted),
+      isSaved: false,
+      isAnonymous: Boolean(postData.isAnonymous),
+      tags: Array.isArray(postData.tags) && postData.tags.length > 0 ? postData.tags : ['Incognito'],
+      poll: postData.poll || undefined,
+      comments: Array.isArray(postData.comments) ? postData.comments : []
+    };
+
+    // Prepend to top of network posts feed
+    postsStore.unshift(newPost);
+    return res.json({ success: true, post: newPost });
+  } catch (err: any) {
+    console.error("Error creating post:", err);
+    return res.status(500).json({ success: false, error: "Failed to publish post to network." });
+  }
+});
+
+// POST /api/posts/:id/upvote - Upvote/unvote post in network store
+app.post("/api/posts/:id/upvote", publicApiRateLimiter, (req, res) => {
+  const { id } = req.params;
+  const post = postsStore.find(p => p.id === id);
+  if (!post) {
+    return res.status(404).json({ success: false, error: "Post not found" });
+  }
+  const isUpvotedNow = !post.isUpvoted;
+  post.upvotes = isUpvotedNow ? (post.upvotes || 0) + 1 : Math.max(0, (post.upvotes || 0) - 1);
+  post.isUpvoted = isUpvotedNow;
+  return res.json({ success: true, post });
+});
+
+// POST /api/posts/:id/comment - Add comment to post in network store
+app.post("/api/posts/:id/comment", publicApiRateLimiter, (req, res) => {
+  const { id } = req.params;
+  const { comment, username, content, userAvatar } = req.body;
+  const post = postsStore.find(p => p.id === id);
+  if (!post) {
+    return res.status(404).json({ success: false, error: "Post not found" });
+  }
+
+  const commentObj = comment || {
+    id: `c_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+    username: username || 'Anonymous_Ghost',
+    userAvatar,
+    content: content || '',
+    timestamp: 'Just now',
+    upvotes: 0
+  };
+
+  if (!post.comments) post.comments = [];
+  post.comments.push(commentObj);
+  return res.json({ success: true, post, comment: commentObj });
+});
+
+// POST /api/posts/:id/poll - Record poll vote in network store
+app.post("/api/posts/:id/poll", publicApiRateLimiter, (req, res) => {
+  const { id } = req.params;
+  const { optionId } = req.body;
+  const post = postsStore.find(p => p.id === id);
+  if (!post || !post.poll) {
+    return res.status(404).json({ success: false, error: "Post or poll not found" });
+  }
+
+  const currentPoll = post.poll;
+  if (currentPoll.userVotedId !== optionId) {
+    currentPoll.options = currentPoll.options.map((opt: any) => {
+      if (opt.id === optionId) return { ...opt, votes: (opt.votes || 0) + 1 };
+      if (opt.id === currentPoll.userVotedId) return { ...opt, votes: Math.max(0, (opt.votes || 0) - 1) };
+      return opt;
+    });
+
+    if (!currentPoll.userVotedId) {
+      currentPoll.totalVotes = (currentPoll.totalVotes || 0) + 1;
+    }
+    currentPoll.userVotedId = optionId;
+  }
+
+  return res.json({ success: true, post });
+});
+
+// DELETE /api/posts/:id - Purge post from network store
+app.delete("/api/posts/:id", publicApiRateLimiter, (req, res) => {
+  const { id } = req.params;
+  postsStore = postsStore.filter(p => p.id !== id);
+  return res.json({ success: true, deletedId: id });
+});
+
 // Procedural username list fallback generator
 function generateProceduralUsernames(params: any): string[] {
   const {
@@ -885,20 +1123,126 @@ let auditLogsStore = [
   }
 ];
 
-let postsStore = [
+let postsStore: any[] = [
   {
     id: 'post_1',
-    username: 'CryptoKnight',
-    userAvatar: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&w=150&q=80',
-    community: 'c/Privacy',
-    title: 'Why Zero-Knowledge Identity Isolation is the Future of Social Media',
-    content: 'Centralized platforms sell your behavioral metadata. On Incognito, zero identity telemetry leaves your hardware vault.',
+    username: 'ShadowNova',
+    userAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+    community: '💬 Confessions',
+    title: "Confession: I've been deploying to production on Friday afternoons for 2 years without telling my lead",
+    content: "I know it violates every engineering rule, but our CI/CD pipeline is so reliable that zero downtime updates go live in 15 seconds. Secretly watching live traffic metrics spike over the weekend is my biggest thrill.",
+    imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1000&q=80',
     timestamp: '2 hours ago',
-    upvotes: 1420,
-    comments: [],
+    upvotes: 2450,
+    isUpvoted: true,
+    isSaved: true,
+    tags: ['Confessions', 'DevLife', 'CI/CD'],
+    comments: [
+      {
+        id: 'comment_1_1',
+        username: 'CryptoKnight',
+        userAvatar: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&w=150&q=80',
+        content: 'Absolute chaos energy! But if tests are green, Friday deploys are valid.',
+        timestamp: '1 hour ago',
+        upvotes: 84,
+        isUpvoted: false
+      },
+      {
+        id: 'comment_1_2',
+        username: 'CipherVapor',
+        userAvatar: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?auto=format&fit=crop&w=150&q=80',
+        content: 'Your lead definitely knows and is quietly impressed by your confidence.',
+        timestamp: '45 mins ago',
+        upvotes: 32,
+        isUpvoted: true
+      }
+    ]
+  },
+  {
+    id: 'post_2',
+    username: 'AetherNode',
+    userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+    community: '😂 Funny',
+    title: "My code worked on the first try today and now I'm terrified",
+    content: "No syntax errors, no missing semicolons, no undefined variables, no broken hooks. Something is deeply wrong. The software is planning something sinister.",
+    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80',
+    timestamp: '4 hours ago',
+    upvotes: 1890,
     isUpvoted: false,
-    isPinned: true,
-    isHidden: false
+    isSaved: false,
+    tags: ['Funny', 'Humor', 'Programming'],
+    comments: [
+      {
+        id: 'comment_2_1',
+        username: 'ShadowNova',
+        userAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+        content: 'Check `git status` right now. You might be editing the wrong file!',
+        timestamp: '3 hours ago',
+        upvotes: 49
+      }
+    ]
+  },
+  {
+    id: 'post_3',
+    username: 'GhostProtocol',
+    userAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
+    community: '🎮 Gaming',
+    title: 'POLL: Which gaming era had the best anonymous voice chat lobbies?',
+    content: 'Before skill-based matchmaking algorithms and behavioral telemetry, multiplayer voice lobbies were pure unfiltered energy. Which era was peak gaming?',
+    timestamp: '6 hours ago',
+    upvotes: 1420,
+    isUpvoted: false,
+    isSaved: false,
+    tags: ['Gaming', 'Multiplayer', 'Poll'],
+    poll: {
+      totalVotes: 842,
+      userVotedId: 'opt_1',
+      options: [
+        { id: 'opt_1', text: 'Halo 3 & Modern Warfare 2 (2007-2009)', votes: 480 },
+        { id: 'opt_2', text: 'Counter-Strike 1.6 & Source (2003-2006)', votes: 260 },
+        { id: 'opt_3', text: 'Early Discord & TeamSpeak Era (2015-2018)', votes: 82 },
+        { id: 'opt_4', text: 'Current Encrypted Spatial Voice Lobbies', votes: 20 }
+      ]
+    },
+    comments: []
+  },
+  {
+    id: 'post_4',
+    username: 'NeonOracle',
+    userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80',
+    community: '🤣 Memes',
+    title: 'Senior Dev explaining legacy code vs Junior Dev trying to refactor it',
+    content: "Senior: 'Don't touch line 42, it holds the entire universe together.'\nJunior: *Deletes line 42*\nJunior: 'Why is the coffee machine now spewing raw HTML?'",
+    imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80',
+    timestamp: '8 hours ago',
+    upvotes: 3120,
+    isUpvoted: true,
+    isSaved: true,
+    tags: ['Memes', 'DevHumor', 'LegacyCode'],
+    comments: [
+      {
+        id: 'comment_4_1',
+        username: 'VoidCipher',
+        userAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+        content: 'Line 42 is load-bearing load balancer logic, classic!',
+        timestamp: '7 hours ago',
+        upvotes: 142
+      }
+    ]
+  },
+  {
+    id: 'post_5',
+    username: 'CipherVapor',
+    userAvatar: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?auto=format&fit=crop&w=150&q=80',
+    community: '💻 Technology',
+    title: 'Why Zero-Knowledge Identity Isolation is the Future of Social Media',
+    content: 'The INCOGNITO protocol proves that we can have a highly interactive, authenticated social platform without exposing any real identity. Your email, phone, and IP remain strictly locked inside an offline hardware vault, while the public network only ever sees cryptographic personas.',
+    timestamp: '10 hours ago',
+    upvotes: 2150,
+    isUpvoted: false,
+    isSaved: true,
+    tags: ['Technology', 'ZeroKnowledge', 'Privacy'],
+    comments: []
   }
 ];
 
@@ -1148,23 +1492,96 @@ setInterval(() => {
   }
 }, 30000);
 
-// Initialize Salted Password Hashes for Initial Accounts
+// Server Session Store & Cookie Helpers
+interface UserSession {
+  sessionId: string;
+  userId: string;
+  createdAt: number;
+  expiresAt: number;
+}
+const sessionsStore = new Map<string, UserSession>();
+
+function getCookie(req: any, cookieName: string): string | null {
+  const cookieHeader = req.headers?.cookie;
+  if (!cookieHeader) return null;
+  const cookies = cookieHeader.split(";");
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split("=");
+    if (name === cookieName) {
+      return decodeURIComponent(value);
+    }
+  }
+  return null;
+}
+
+function setSessionCookie(res: any, sessionId: string) {
+  const maxAge = 24 * 60 * 60; // 24 hours in seconds
+  const isProd = process.env.NODE_ENV === "production";
+  const cookieHeader = `incognito_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${isProd ? "; Secure" : ""}`;
+  res.setHeader("Set-Cookie", cookieHeader);
+}
+
+function createSession(res: any, userId: string): string {
+  for (const [sId, sess] of sessionsStore.entries()) {
+    if (sess.userId === userId) {
+      sessionsStore.delete(sId);
+    }
+  }
+  const sessionId = crypto.randomBytes(32).toString("hex");
+  const now = Date.now();
+  sessionsStore.set(sessionId, {
+    sessionId,
+    userId,
+    createdAt: now,
+    expiresAt: now + 24 * 60 * 60 * 1000
+  });
+  setSessionCookie(res, sessionId);
+  return sessionId;
+}
+
+// Initialize Salted Password Hashes for Initial Accounts & purge plaintext passwords
 accountsStore = accountsStore.map((acc) => {
   const salt = acc.salt || crypto.randomBytes(16).toString("hex");
   const passwordHash = acc.passwordHash || hashPassword(acc.password || "password123", salt);
-  return { ...acc, salt, passwordHash };
+  const { password, ...cleanedAcc } = acc;
+  return { ...cleanedAcc, salt, passwordHash };
 });
 
 // AUTHENTICATION MIDDLEWARE
 const authenticateUser = (req: any, res: any, next: any) => {
-  const userId = req.headers["x-user-id"] || req.query.userId || req.body.userId;
-  if (!userId) {
-    return res.status(401).json({ error: "Unauthorized: Missing user authentication credentials" });
+  let userId: string | undefined;
+
+  const sessionId = getCookie(req, "incognito_session");
+  if (sessionId) {
+    const session = sessionsStore.get(sessionId);
+    if (session && Date.now() < session.expiresAt) {
+      userId = session.userId;
+    } else if (session) {
+      sessionsStore.delete(sessionId);
+    }
   }
+
+  if (!userId) {
+    userId = req.headers["x-user-id"] || req.query.userId || req.body?.userId;
+  }
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: "UNAUTHORIZED",
+      message: "Unauthorized: Missing user authentication credentials"
+    });
+  }
+
   const user = accountsStore.find((a) => a.id === userId);
   if (!user) {
-    return res.status(401).json({ error: "Unauthorized: User session invalid" });
+    return res.status(401).json({
+      success: false,
+      error: "UNAUTHORIZED",
+      message: "Unauthorized: User session invalid"
+    });
   }
+
   req.user = user;
   next();
 };
@@ -1172,11 +1589,13 @@ const authenticateUser = (req: any, res: any, next: any) => {
 // ADMIN AUTHORIZATION MIDDLEWARE
 const verifyAdmin = (req: any, res: any, next: any) => {
   if (!req.user) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Unauthorized" });
   }
   if (req.user.email?.toLowerCase() !== 'kavyanagpal0005@gmail.com') {
     return res.status(403).json({
-      error: "403 Forbidden: Administrative panel access is restricted exclusively to kavyanagpal0005@gmail.com",
+      success: false,
+      error: "FORBIDDEN",
+      message: "403 Forbidden: Administrative panel access is restricted exclusively to kavyanagpal0005@gmail.com",
       role: req.user.role || "user"
     });
   }
@@ -1184,7 +1603,7 @@ const verifyAdmin = (req: any, res: any, next: any) => {
 };
 
 // -------------------------------------------------------------------------
-// USER CHECK ENDPOINT
+// USER CHECK & CURRENT SESSION ENDPOINTS
 // -------------------------------------------------------------------------
 app.get('/api/auth/check-user', (req, res) => {
   const userId = req.query.userId ? String(req.query.userId) : '';
@@ -1199,6 +1618,25 @@ app.get('/api/auth/check-user', (req, res) => {
     return res.json({ exists: true, user: sanitizeUserForResponse(existingUser) });
   }
   return res.json({ exists: false });
+});
+
+app.get('/api/auth/me', authenticateUser, (req: any, res) => {
+  return res.json({
+    success: true,
+    user: sanitizeUserForResponse(req.user)
+  });
+});
+
+app.post('/api/auth/logout', (req: any, res) => {
+  const sessionId = getCookie(req, "incognito_session");
+  if (sessionId) {
+    sessionsStore.delete(sessionId);
+  }
+  res.setHeader(
+    "Set-Cookie",
+    "incognito_session=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+  );
+  return res.json({ success: true, message: "Logged out successfully" });
 });
 
 // -------------------------------------------------------------------------
@@ -1218,73 +1656,81 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       password
     } = req.body || {};
 
-    const targetUserId = rawUserId || (email ? `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
-
-    if (!targetUserId) {
+    // 1. Validate password length server-side
+    if (!password || typeof password !== 'string' || password.length < 8) {
       return res.status(400).json({
         success: false,
-        error: "MISSING_USER_ID",
-        message: "Missing User ID for registration."
+        error: "VALIDATION_ERROR",
+        message: "Password must be at least 8 characters long."
       });
     }
 
-    // 1. Check if account already exists by username, email, or phone
-    const cleanUsername = username?.trim();
+    // 2. Validate email format if provided
     const cleanEmail = email?.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "Please enter a valid email address."
+      });
+    }
+
+    // 3. Validate username handle format
+    const cleanUsername = username?.trim();
+    if (!cleanUsername || cleanUsername.length < 3 || cleanUsername.length > 20 || !/^[a-zA-Z0-9_.]+$/.test(cleanUsername)) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "Username handle must be 3–20 alphanumeric characters, underscores, or periods."
+      });
+    }
+
+    // 4. Check if email/phone credentials or username handle already exist
     const cleanPhone = phone?.replace(/\s+/g, '');
 
-    let existingUser = accountsStore.find(
-      a => (cleanUsername && a.username.toLowerCase() === cleanUsername.toLowerCase()) ||
-           (cleanEmail && a.email?.toLowerCase() === cleanEmail.toLowerCase()) ||
+    const existingCredentialUser = accountsStore.find(
+      a => (cleanEmail && a.email?.toLowerCase() === cleanEmail.toLowerCase()) ||
            (cleanPhone && a.phone === cleanPhone)
     );
 
-    if (existingUser) {
-      let errorCode = "DUPLICATE_ACCOUNT";
-      let errorMessage = "Account already exists.";
-      if (cleanEmail && existingUser.email?.toLowerCase() === cleanEmail.toLowerCase()) {
-        errorCode = "DUPLICATE_EMAIL";
-        errorMessage = "An account with this email address already exists. Please log in.";
-      } else if (cleanPhone && existingUser.phone === cleanPhone) {
-        errorCode = "DUPLICATE_PHONE";
-        errorMessage = "An account with this mobile number already exists. Please log in.";
-      } else if (cleanUsername && existingUser.username.toLowerCase() === cleanUsername.toLowerCase()) {
-        errorCode = "DUPLICATE_USERNAME";
-        errorMessage = "This handle is already taken. Please choose another username.";
-      }
-
+    if (existingCredentialUser) {
       return res.status(409).json({
         success: false,
-        error: errorCode,
-        message: errorMessage
+        error: "DUPLICATE_CREDENTIALS",
+        message: "An account with these credentials already exists."
       });
     }
 
-    // 2. Assign default role (check super_admin email rule)
+    const existingUsernameUser = accountsStore.find(
+      a => cleanUsername && a.username.toLowerCase() === cleanUsername.toLowerCase()
+    );
+
+    if (existingUsernameUser) {
+      return res.status(409).json({
+        success: false,
+        error: "USERNAME_TAKEN",
+        message: "That username is already taken."
+      });
+    }
+
+    // 5. Role Assignment
     let assignedRole: 'owner' | 'super_admin' | 'admin' | 'moderator' | 'user' = 'user';
     if (cleanEmail && cleanEmail.toLowerCase() === 'kavyanagpal0005@gmail.com') {
       assignedRole = 'super_admin';
     }
 
-    // 3. Generate salt and passwordHash if password was supplied
-    const salt = `salt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-    const passwordHash = password ? hashPassword(password, salt) : undefined;
+    const targetUserId = rawUserId || (cleanEmail ? `usr_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
 
-    // 4. Create new user account
-    const fallbackGeneratedName = generateAnonymousUsernames({
-      count: 1,
-      existingUsernames: accountsStore.map(a => a.username),
-      excludePersonal: [cleanEmail, realName, cleanPhone]
-    })[0] || `ShadowFox_${Math.floor(100 + Math.random() * 900)}`;
+    // 6. Generate salt and passwordHash (Never store plaintext passwords)
+    const salt = `salt_${Date.now().toString(36)}_${crypto.randomBytes(8).toString('hex')}`;
+    const passwordHash = hashPassword(password, salt);
 
-    const newUsername = cleanUsername || fallbackGeneratedName;
     const newAccount: UserAccount = {
       id: targetUserId,
-      username: newUsername,
+      username: cleanUsername,
       realName: realName?.trim() || 'Anonymous Vault Member',
       email: cleanEmail || undefined,
       phone: cleanPhone || undefined,
-      password: password || undefined,
       salt,
       passwordHash,
       avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
@@ -1301,22 +1747,25 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
 
     accountsStore.unshift(newAccount);
 
+    // 7. Create secure session and set HTTP-only cookie
+    createSession(res, targetUserId);
+
     const isAdmin = assignedRole === 'super_admin' || cleanEmail?.toLowerCase() === 'kavyanagpal0005@gmail.com';
     const redirectTo = isAdmin ? "/admin" : "/home";
 
-    // Log admin creation audit
+    // Audit log
     if (isAdmin) {
       auditLogsStore.unshift({
         id: `log_${Date.now().toString(36)}`,
         actorId: targetUserId,
-        actorUsername: newUsername,
+        actorUsername: cleanUsername,
         role: assignedRole,
         action: 'Administrator Account Provisioned',
         targetResource: 'Authentication Gateway',
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
         ipAddress: String(req.ip || "127.0.0.1"),
         deviceInfo: req.headers["user-agent"] || "Browser Client",
-        details: `Provisioned @${newUsername} as ${assignedRole}.`
+        details: `Provisioned @${cleanUsername} as ${assignedRole}.`
       });
     }
 
@@ -1353,7 +1802,6 @@ app.post("/api/generate-username", (req, res) => {
       existingUsernames = []
     } = req.body || {};
 
-    // Combine all existing usernames from accountsStore + request payload
     const allExistingUsernames = [
       ...accountsStore.map(a => a.username),
       ...(Array.isArray(existingUsernames) ? existingUsernames : [])
@@ -1384,7 +1832,6 @@ app.post("/api/generate-username", (req, res) => {
   }
 });
 
-
 // -------------------------------------------------------------------------
 // ACCOUNT RECOVERY / PASSWORD RESET ENDPOINT (Rate-Limited, Non-Enumerative)
 // -------------------------------------------------------------------------
@@ -1393,7 +1840,6 @@ app.post("/api/auth/recover", recoveryRateLimiter, async (req, res) => {
   const { email, username, phone, identifier } = req.body || {};
   const targetId = (email || username || phone || identifier || "").toString().trim().toLowerCase();
 
-  // Artificial timing equalization delay to prevent timing-based enumeration attacks
   await new Promise(resolve => setTimeout(resolve, 80));
 
   if (targetId && typeof accountsStore !== 'undefined') {
@@ -1420,7 +1866,6 @@ app.post("/api/auth/recover", recoveryRateLimiter, async (req, res) => {
     }
   }
 
-  // Non-enumerative generic response to protect user privacy
   return res.json({
     success: true,
     message: "If an account matching those credentials exists in our system, a password recovery notification has been dispatched."
@@ -1428,152 +1873,112 @@ app.post("/api/auth/recover", recoveryRateLimiter, async (req, res) => {
 });
 
 // -------------------------------------------------------------------------
-// AUTHENTICATION ENDPOINT (Rate-Limited, Anti-Brute-Force, Salt-Hashed)
+// AUTHENTICATION ENDPOINT (Rate-Limited, Non-Enumerative, Salt-Hashed, Brute-Force Mitigated)
 // -------------------------------------------------------------------------
-app.post("/api/auth/login", loginRateLimiter, (req, res) => {
-  const { email, phone, countryCode, password, userId, twoFactorCode } = req.body;
-  const clientIp = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
-  const lockoutKey = `lockout_${clientIp}_${email || phone || userId || 'anon'}`;
-  const now = Date.now();
+app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res) => {
+  const { email, phone, identifier, password, userId, twoFactorCode } = req.body || {};
+  const clientIp = getCleanIp(req);
 
-  const lockoutEntry = rateLimitMap.get(lockoutKey) || { count: 0, resetTime: now + 15 * 60 * 1000, failedLoginAttempts: 0 };
-
-  // Check temporary account lockout
-  if (lockoutEntry.lockoutUntil && now < lockoutEntry.lockoutUntil) {
-    const remainingSecs = Math.ceil((lockoutEntry.lockoutUntil - now) / 1000);
-    return res.status(429).json({
+  // 1. Validate presence of identifier and password
+  const targetIdentifier = (email || phone || identifier || userId || "").toString().trim();
+  if (!targetIdentifier || !password || typeof password !== 'string' || !password.trim()) {
+    recordFailedLoginAttempt(clientIp);
+    return res.status(400).json({
       success: false,
-      error: `Security Lockout Active: Account or IP temporarily locked due to repeated authentication failures. Please try again in ${remainingSecs} seconds.`
+      error: "INVALID_CREDENTIALS",
+      message: "Invalid email/ID or password."
     });
   }
 
-  let match: UserAccount | undefined;
-  if (userId) {
-    match = accountsStore.find(a => a.id === userId);
-  } else if (email) {
-    const cleanIdentifier = email.trim().toLowerCase();
-    match = accountsStore.find(a =>
-      (a.email && a.email.toLowerCase() === cleanIdentifier) ||
-      a.username.toLowerCase() === cleanIdentifier
-    );
-  } else if (phone) {
-    match = accountsStore.find(a => a.phone === phone);
-  }
-
-  // Password validation: Check salt hash, stored plaintext, or fallback for demo accounts / creator
-  let passwordMatches = false;
-  if (match) {
-    if (match.salt && match.passwordHash) {
-      const computedHash = hashPassword(password || "", match.salt);
-      try {
-        passwordMatches = crypto.timingSafeEqual(Buffer.from(computedHash, 'utf8'), Buffer.from(match.passwordHash, 'utf8'));
-      } catch {
-        passwordMatches = false;
-      }
-    }
-    
-    if (!passwordMatches && match.password) {
-      passwordMatches = (match.password === password);
-    }
-
-    // High usability fallback for seed/creator accounts or testing
-    if (!passwordMatches && (password || '').length >= 3) {
-      passwordMatches = true;
-      if (password) match.password = password;
-    }
-  } else if ((email || phone) && (password || '').length >= 3) {
-    // Auto-create user node in server store if authenticating with new credentials
-    const cleanEmail = email ? email.trim() : undefined;
-    const cleanPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : undefined;
-    const derivedName = cleanEmail ? (cleanEmail.includes('@') ? cleanEmail.split('@')[0] : cleanEmail) : `Node_${cleanPhone?.slice(-4) || 'Anon'}`;
-    
-    const isSuperAdmin = (cleanEmail?.toLowerCase() === 'kavyanagpal0005@gmail.com');
-    const salt = `salt_${Date.now().toString(36)}`;
-    match = {
-      id: `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`,
-      username: derivedName.replace(/[^a-zA-Z0-9_.]/g, '') || `User_${Date.now().toString(36).substring(4)}`,
-      realName: isSuperAdmin ? 'Kavya Nagpal' : 'Anonymous Vault Member',
-      email: cleanEmail,
-      phone: cleanPhone,
-      salt,
-      passwordHash: hashPassword(password || 'password123', salt),
-      password: password,
-      avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-      bio: 'Incognito privacy-first network node.',
-      karma: isSuperAdmin ? 15820 : 25,
-      joinDate: 'Jul 2026',
-      badges: isSuperAdmin ? ['Incognito Creator', 'System Lead'] : ['Verified', 'Privacy Vault'],
-      loginMethod: cleanEmail ? 'Email' : 'Mobile',
-      deviceInfo: req.headers["user-agent"] || "Browser Client",
-      ipAddress: String(clientIp),
-      role: isSuperAdmin ? 'super_admin' : 'user',
-      twoFactorEnabled: false
-    };
-
-    accountsStore.unshift(match);
-    passwordMatches = true;
-  }
-
-  // Generic authentication error message (OWASP Username Enumeration Prevention)
-  if (!match || !passwordMatches) {
-    lockoutEntry.failedLoginAttempts = (lockoutEntry.failedLoginAttempts || 0) + 1;
-    if (lockoutEntry.failedLoginAttempts >= 5) {
-      lockoutEntry.lockoutUntil = now + 15 * 60 * 1000; // 15-minute lockout
-      auditLogsStore.unshift({
-        id: `log_${Date.now().toString(36)}`,
-        actorId: match?.id || 'unknown',
-        actorUsername: match?.username || 'unknown',
-        role: 'system',
-        action: 'Account Lockout Enforced',
-        targetResource: 'Authentication Gateway',
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        ipAddress: String(clientIp),
-        deviceInfo: req.headers["user-agent"] || "Browser Client",
-        details: `Enforced 15-minute security lockout after 5 consecutive failed login attempts.`
+  // 2. Format validation for email identifiers
+  if (targetIdentifier.includes('@')) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetIdentifier)) {
+      recordFailedLoginAttempt(clientIp, targetIdentifier);
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_CREDENTIALS",
+        message: "Invalid email/ID or password."
       });
     }
-    rateLimitMap.set(lockoutKey, lockoutEntry);
-
-    return res.status(401).json({ success: false, error: "Invalid email/username or password." });
   }
 
-  // Clear failed attempt counters on successful login
-  rateLimitMap.delete(lockoutKey);
+  // Check account-level lockout key
+  const accountLockKey = `lockout_acc_${targetIdentifier.toLowerCase()}`;
+  const now = Date.now();
+  const accLockEntry = rateLimitMap.get(accountLockKey);
+  if (accLockEntry?.lockoutUntil && now < accLockEntry.lockoutUntil) {
+    const remainingSecs = Math.ceil((accLockEntry.lockoutUntil - now) / 1000);
+    return res.status(429).json({
+      success: false,
+      error: "RATE_LIMIT_EXCEEDED",
+      message: `Security Lockout Active: Account or IP temporarily locked due to repeated authentication failures. Please try again in ${remainingSecs} seconds.`,
+      retryAfter: remainingSecs
+    });
+  }
+
+  // 3. Search database for account by identifier (email, handle, phone, or ID)
+  const cleanIdLower = targetIdentifier.toLowerCase();
+  const cleanPhone = targetIdentifier.replace(/[\s\-\(\)]/g, '');
+
+  const match = accountsStore.find(a =>
+    a.id === targetIdentifier ||
+    (a.email && a.email.toLowerCase() === cleanIdLower) ||
+    (a.username && a.username.toLowerCase() === cleanIdLower) ||
+    (a.phone && a.phone === cleanPhone)
+  );
+
+  // 4. Retrieve stored password hash & salt, verify timing-safely
+  let passwordMatches = false;
+  if (match && match.salt && match.passwordHash) {
+    const computedHash = hashPassword(password, match.salt);
+    try {
+      passwordMatches = crypto.timingSafeEqual(
+        Buffer.from(computedHash, 'utf8'),
+        Buffer.from(match.passwordHash, 'utf8')
+      );
+    } catch {
+      passwordMatches = false;
+    }
+  }
+
+  // 5. Reject if account does NOT exist OR password does NOT match (Safe Non-Enumerative Error Response)
+  if (!match || !passwordMatches) {
+    recordFailedLoginAttempt(clientIp, targetIdentifier);
+
+    return res.status(401).json({
+      success: false,
+      error: "INVALID_CREDENTIALS",
+      message: "Invalid email/ID or password."
+    });
+  }
+
+  // Clear failed attempt counter on successful password verification
+  recordSuccessfulLoginAttempt(clientIp, targetIdentifier);
 
   const adminRoles = ["owner", "super_admin", "admin", "moderator"];
-  const isAdmin = adminRoles.includes(match.role || "");
+  const isAdmin = adminRoles.includes(match.role || "") || match.email?.toLowerCase() === 'kavyanagpal0005@gmail.com';
 
-  // Require Two-Factor Authentication (2FA) verification for Admin roles
+  // Verify 2FA code for admin roles if active
   if (isAdmin && match.twoFactorEnabled && twoFactorCode) {
     if (twoFactorCode !== "123456" && twoFactorCode !== "654321" && twoFactorCode.length !== 6) {
       return res.status(401).json({
         success: false,
-        error: "Invalid Multi-Factor Authentication (2FA) verification code."
+        error: "INVALID_2FA",
+        message: "Invalid Multi-Factor Authentication (2FA) verification code."
       });
     }
   }
 
-  // Audit Log
-  if (isAdmin) {
-    const logEntry = {
-      id: `log_${Date.now().toString(36)}`,
-      actorId: match.id,
-      actorUsername: match.username,
-      role: match.role || "admin",
-      action: "Admin Login (2FA Verified)",
-      targetResource: "Platform Gateway",
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      ipAddress: String(clientIp),
-      deviceInfo: req.headers["user-agent"] || match.deviceInfo || "Browser Client",
-      details: `Successful administrator authentication as @${match.username}`
-    };
-    auditLogsStore.unshift(logEntry);
-  }
+  // 6. Create session and set HTTP-only session cookie
+  createSession(res, match.id);
+
+  const redirectTo = isAdmin ? "/admin" : "/home";
 
   return res.json({
     success: true,
     user: sanitizeUserForResponse(match),
-    isAdmin
+    isAdmin,
+    redirectTo
   });
 });
 

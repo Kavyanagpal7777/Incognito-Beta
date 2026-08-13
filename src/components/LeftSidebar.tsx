@@ -7,6 +7,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Home, 
+  Users,
   Trophy, 
   MessageSquare, 
   User, 
@@ -24,8 +25,8 @@ import { UserAccount } from '../types';
 import IncognitoLogo from './IncognitoLogo';
 
 interface LeftSidebarProps {
-  activeTab: 'home' | 'leaderboard' | 'messages' | 'profile' | 'settings' | 'admin';
-  setActiveTab: (tab: 'home' | 'leaderboard' | 'messages' | 'profile' | 'settings' | 'admin') => void;
+  activeTab: 'home' | 'communities' | 'leaderboard' | 'messages' | 'profile' | 'settings' | 'admin';
+  setActiveTab: (tab: 'home' | 'communities' | 'leaderboard' | 'messages' | 'profile' | 'settings' | 'admin') => void;
   currentUser: UserAccount;
   onLogout: () => void;
   isAnonymousMode: boolean;
@@ -49,6 +50,7 @@ export default function LeftSidebar({
 
   const baseNavItems = [
     { id: 'home', label: 'Home', icon: Home },
+    { id: 'communities', label: 'Communities', icon: Users, badge: 'NEW' },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy, badge: 'TOP' },
     { id: 'messages', label: 'Messages', icon: MessageSquare, count: unreadMessagesCount },
     { id: 'profile', label: 'Profile', icon: User },

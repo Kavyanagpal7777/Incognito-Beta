@@ -264,3 +264,53 @@ export interface LegalUserData {
   }>;
 }
 
+export interface CommunityRule {
+  title: string;
+  description: string;
+}
+
+export interface CommunityComment {
+  id: string;
+  content: string;
+  authorUsername: string;
+  authorAvatar?: string;
+  timestamp: string;
+  upvotes?: number;
+}
+
+export interface CommunityPost {
+  id: string;
+  communityId: string;
+  title: string;
+  content: string;
+  authorUsername: string;
+  authorAvatar?: string;
+  isAnonymous?: boolean;
+  timestamp: string;
+  upvotes: number;
+  isUpvoted?: boolean;
+  commentCount: number;
+  comments?: CommunityComment[];
+  tags?: string[];
+  isPinned?: boolean;
+}
+
+export interface Community {
+  id: string;
+  name: string;
+  handle: string;
+  description: string;
+  category: string;
+  iconUrl?: string;
+  bannerUrl?: string;
+  creatorUsername: string;
+  memberCount: number;
+  isJoined?: boolean;
+  isPopular?: boolean;
+  isTrending?: boolean;
+  rules?: CommunityRule[];
+  moderatorUsernames?: string[];
+  bannedUsernames?: string[];
+  createdAt: string;
+}
+

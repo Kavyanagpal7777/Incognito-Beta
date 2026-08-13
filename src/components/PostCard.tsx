@@ -21,7 +21,8 @@ import {
   X,
   Lock,
   BarChart2,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { Post, Comment, UserAccount } from '../types';
 import UserBadgesList from './UserBadgesList';
@@ -34,6 +35,7 @@ interface PostCardProps {
   onSave: (postId: string) => void;
   onAddComment: (postId: string, commentText: string) => void;
   onReportPost: (postId: string) => void;
+  onDeletePost?: (postId: string) => void;
   onVotePoll?: (postId: string, optionId: string) => void;
   onViewUserProfile?: (username: string) => void;
   onTriggerToast: (msg: string, type: 'success' | 'error' | 'info') => void;
@@ -46,6 +48,7 @@ export default function PostCard({
   onSave,
   onAddComment,
   onReportPost,
+  onDeletePost,
   onVotePoll,
   onViewUserProfile,
   onTriggerToast
@@ -181,10 +184,24 @@ export default function PostCard({
                     onReportPost(post.id);
                     setShowMenu(false);
                   }}
-                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-rose-300 hover:bg-rose-500/20 transition-colors"
+                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-amber-300 hover:bg-amber-500/20 transition-colors"
                 >
                   Report Post
                 </button>
+                {onDeletePost && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Delete this post permanently from the network?')) {
+                        onDeletePost(post.id);
+                        setShowMenu(false);
+                      }
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-lg text-left text-rose-400 hover:bg-rose-500/20 transition-colors font-bold flex items-center gap-1.5 mt-0.5 border-t border-white/10 pt-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Post</span>
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

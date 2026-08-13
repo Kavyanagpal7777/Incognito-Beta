@@ -42,6 +42,7 @@ import {
 import LeftSidebar from './components/LeftSidebar';
 import TopBar from './components/TopBar';
 import PublicFeed from './components/PublicFeed';
+import CommunitiesView from './components/communities/CommunitiesView';
 import LeaderboardView from './components/LeaderboardView';
 import MessagesView from './components/MessagesView';
 import ProfileView from './components/ProfileView';
@@ -75,7 +76,7 @@ export default function App() {
   });
 
   // Tab & Navigation Management
-  const [sidebarTab, setSidebarTab] = useState<'home' | 'leaderboard' | 'messages' | 'profile' | 'settings' | 'admin'>('home');
+  const [sidebarTab, setSidebarTab] = useState<'home' | 'communities' | 'leaderboard' | 'messages' | 'profile' | 'settings' | 'admin'>('home');
   const [viewingProfileUsername, setViewingProfileUsername] = useState<string | null>(null);
   const [isAnonymousMode, setIsAnonymousMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,6 +161,43 @@ export default function App() {
       setCurrentUser(JSON.parse(savedUser));
       setIsAuthenticated(true);
     }
+  }, []);
+
+  // --- REAL-TIME NETWORK POST POLLING SYNC ---
+  useEffect(() => {
+    const fetchNetworkPosts = async () => {
+      try {
+        const res = await fetch('/api/posts');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.posts) && data.posts.length > 0) {
+            setPosts(prev => {
+              const savedMap = new Map<string, boolean>();
+              const upvotedMap = new Map<string, boolean>();
+              prev.forEach(p => {
+                if (p.isSaved) savedMap.set(p.id, true);
+                if (p.isUpvoted) upvotedMap.set(p.id, true);
+              });
+
+              const updated = data.posts.map((sp: Post) => ({
+                ...sp,
+                isSaved: savedMap.has(sp.id) ? true : sp.isSaved,
+                isUpvoted: upvotedMap.has(sp.id) ? true : sp.isUpvoted
+              }));
+
+              localStorage.setItem('incognito_posts', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        }
+      } catch (err) {
+        // Quiet retry on network idle
+      }
+    };
+
+    fetchNetworkPosts();
+    const interval = setInterval(fetchNetworkPosts, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // Sync state modifications to localStorage
@@ -357,193 +395,48 @@ export default function App() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    let identifier = '';
     if (loginMode === 'email') {
-      const cleanEmail = loginEmail.trim();
-      if (!cleanEmail || !loginPassword) {
-        triggerToast('Please provide both your email and password.', 'error');
+      identifier = loginEmail.trim();
+      if (!identifier || !loginPassword) {
+        triggerToast('Please provide both your email/ID and password.', 'error');
         return;
       }
-
-      setIsSubmitting(true);
-      setSubmitMessage('Verifying authentication signature...');
-
-      let response: Response | null = null;
-      let data: any = null;
-
-      try {
-        response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: cleanEmail,
-            password: loginPassword
-          })
-        });
-
-        const contentType = response?.headers?.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          try {
-            data = await response.json();
-          } catch (jsonErr) {
-            console.error('[LOGIN_ERROR] JSON parse failed:', jsonErr);
-          }
-        }
-      } catch (networkErr) {
-        console.warn('[LOGIN_WARNING] Server unreachable, attempting local vault fallback:', networkErr);
-      }
-
-      setIsSubmitting(false);
-
-      if (data && data.success && data.user) {
-        const userAccount: UserAccount = data.user;
-        setCurrentUser(userAccount);
-        setIsAuthenticated(true);
-
-        if (rememberMe) {
-          localStorage.setItem('incognito_current_user', JSON.stringify(userAccount));
-          localStorage.setItem('aetheris_current_user', JSON.stringify(userAccount));
-        }
-
-        if (data.redirectTo === '/admin' || userAccount.role === 'super_admin' || userAccount.role === 'owner') {
-          setSidebarTab('admin');
-          window.location.hash = '#/admin';
-          triggerToast(`Authenticated: Administrator @${userAccount.username}. Governance Panel unlocked.`, 'success');
-        } else {
-          setSidebarTab('home');
-          window.location.hash = '#/home';
-          triggerToast(`Authenticated: Welcome back @${userAccount.username}!`, 'success');
-        }
-        return;
-      }
-
-      // Check local vault fallback if server returns unsuccessful or is unreachable
-      const cleanLower = cleanEmail.toLowerCase();
-      let matchedAccount = accounts.find(
-        a => (a.email && a.email.toLowerCase() === cleanLower) ||
-             (a.username && a.username.toLowerCase() === cleanLower)
-      );
-
-      // Special check for super admin account
-      if (!matchedAccount && cleanLower === 'kavyanagpal0005@gmail.com') {
-        matchedAccount = accounts.find(a => a.id === 'usr_4') || {
-          id: 'usr_4',
-          username: 'VoidCipher',
-          realName: 'Kavya Nagpal',
-          email: 'kavyanagpal0005@gmail.com',
-          phone: '8899001122',
-          avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-          bio: 'Incognito Creator & Lead System Architect.',
-          karma: 15820,
-          joinDate: 'Jul 2026',
-          badges: ['Incognito Creator', 'System Lead'],
-          loginMethod: 'Email',
-          deviceInfo: navigator.userAgent || 'Browser Client',
-          ipAddress: '127.0.0.1',
-          role: 'super_admin',
-          twoFactorEnabled: true
-        };
-      }
-
-      if (matchedAccount) {
-        setCurrentUser(matchedAccount);
-        setIsAuthenticated(true);
-
-        if (rememberMe) {
-          localStorage.setItem('incognito_current_user', JSON.stringify(matchedAccount));
-          localStorage.setItem('aetheris_current_user', JSON.stringify(matchedAccount));
-        }
-
-        if (matchedAccount.role === 'super_admin' || matchedAccount.role === 'owner') {
-          setSidebarTab('admin');
-          window.location.hash = '#/admin';
-          triggerToast(`Authenticated: Administrator @${matchedAccount.username}. Governance Panel unlocked.`, 'success');
-        } else {
-          setSidebarTab('home');
-          window.location.hash = '#/home';
-          triggerToast(`Authenticated: Welcome back @${matchedAccount.username}!`, 'success');
-        }
-        return;
-      }
-
-      // If user typed a new email or handle on login, forge account locally and sign in
-      const generatedUserId = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-      const derivedUsername = cleanEmail.includes('@') ? cleanEmail.split('@')[0] : cleanEmail;
-      const forgedAccount: UserAccount = {
-        id: generatedUserId,
-        username: derivedUsername.replace(/[^a-zA-Z0-9_.]/g, '') || `Node_${Date.now().toString(36).substring(4)}`,
-        realName: 'Anonymous Vault Member',
-        email: cleanEmail.includes('@') ? cleanEmail : undefined,
-        password: loginPassword,
-        avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-        bio: 'Incognito privacy-first network node.',
-        karma: 50,
-        joinDate: 'Jul 2026',
-        badges: ['Verified', 'Privacy Vault'],
-        loginMethod: 'Email',
-        deviceInfo: navigator.userAgent || 'Browser Client',
-        ipAddress: '127.0.0.1',
-        role: cleanLower === 'kavyanagpal0005@gmail.com' ? 'super_admin' : 'user',
-        twoFactorEnabled: false
-      };
-
-      setCurrentUser(forgedAccount);
-      setIsAuthenticated(true);
-      setAccounts(prev => [forgedAccount, ...prev]);
-
-      if (rememberMe) {
-        localStorage.setItem('incognito_current_user', JSON.stringify(forgedAccount));
-        localStorage.setItem('aetheris_current_user', JSON.stringify(forgedAccount));
-      }
-
-      if (forgedAccount.role === 'super_admin') {
-        setSidebarTab('admin');
-        window.location.hash = '#/admin';
-        triggerToast('Superadmin Profile forged! Admin Governance Panel unlocked.', 'success');
-      } else {
-        setSidebarTab('home');
-        window.location.hash = '#/home';
-        triggerToast(`Authenticated: Welcome to Incognito @${forgedAccount.username}!`, 'success');
-      }
-
     } else {
-      // Mobile login verification
-      const cleanPhone = loginPhone.replace(/[\s\-\(\)]/g, '');
-      if (!cleanPhone || !loginPassword) {
+      identifier = loginPhone.replace(/[\s\-\(\)]/g, '');
+      if (!identifier || !loginPassword) {
         triggerToast('Please enter both mobile number and password.', 'error');
         return;
       }
+    }
 
-      setIsSubmitting(true);
-      setSubmitMessage('Verifying mobile authenticator signature...');
+    setIsSubmitting(true);
+    setSubmitMessage('Verifying authentication credentials...');
 
-      let response: Response | null = null;
+    try {
+      const payload = loginMode === 'email'
+        ? { email: identifier, password: loginPassword }
+        : { phone: identifier, password: loginPassword };
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
       let data: any = null;
-
-      try {
-        response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: cleanPhone,
-            password: loginPassword
-          })
-        });
-
-        const contentType = response?.headers?.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          try {
-            data = await response.json();
-          } catch (jsonErr) {
-            console.error('[LOGIN_ERROR] JSON parse failed:', jsonErr);
-          }
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          console.error('[LOGIN_ERROR] JSON parse failed:', jsonErr);
         }
-      } catch (networkErr) {
-        console.warn('[LOGIN_WARNING] Server unreachable, attempting local vault fallback:', networkErr);
       }
 
       setIsSubmitting(false);
 
-      if (data && data.success && data.user) {
+      if (response.ok && data && data.success && data.user) {
         const userAccount: UserAccount = data.user;
         setCurrentUser(userAccount);
         setIsAuthenticated(true);
@@ -562,64 +455,13 @@ export default function App() {
           window.location.hash = '#/home';
           triggerToast(`Authenticated: Welcome back @${userAccount.username}!`, 'success');
         }
-        return;
+      } else {
+        const errorMessage = data?.message || data?.error || 'Invalid email/ID or password.';
+        triggerToast(errorMessage, 'error');
       }
-
-      // Check local accounts fallback
-      let matchedAccount = accounts.find(a => a.phone === cleanPhone);
-      if (matchedAccount) {
-        setCurrentUser(matchedAccount);
-        setIsAuthenticated(true);
-
-        if (rememberMe) {
-          localStorage.setItem('incognito_current_user', JSON.stringify(matchedAccount));
-          localStorage.setItem('aetheris_current_user', JSON.stringify(matchedAccount));
-        }
-
-        if (matchedAccount.role === 'super_admin' || matchedAccount.role === 'owner') {
-          setSidebarTab('admin');
-          window.location.hash = '#/admin';
-          triggerToast(`Authenticated: Administrator @${matchedAccount.username}. Governance Panel unlocked.`, 'success');
-        } else {
-          setSidebarTab('home');
-          window.location.hash = '#/home';
-          triggerToast(`Authenticated: Welcome back @${matchedAccount.username}!`, 'success');
-        }
-        return;
-      }
-
-      // Auto-forge mobile node persona fallback
-      const generatedUserId = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-      const forgedAccount: UserAccount = {
-        id: generatedUserId,
-        username: `MobileNode_${cleanPhone.slice(-4)}`,
-        realName: 'Anonymous Mobile Member',
-        phone: cleanPhone,
-        password: loginPassword,
-        avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-        bio: 'Incognito privacy-first network node.',
-        karma: 50,
-        joinDate: 'Jul 2026',
-        badges: ['Verified', 'Mobile Vault'],
-        loginMethod: 'Mobile',
-        deviceInfo: navigator.userAgent || 'Browser Client',
-        ipAddress: '127.0.0.1',
-        role: 'user',
-        twoFactorEnabled: false
-      };
-
-      setCurrentUser(forgedAccount);
-      setIsAuthenticated(true);
-      setAccounts(prev => [forgedAccount, ...prev]);
-
-      if (rememberMe) {
-        localStorage.setItem('incognito_current_user', JSON.stringify(forgedAccount));
-        localStorage.setItem('aetheris_current_user', JSON.stringify(forgedAccount));
-      }
-
-      setSidebarTab('home');
-      window.location.hash = '#/home';
-      triggerToast(`Authenticated: Welcome to Incognito @${forgedAccount.username}!`, 'success');
+    } catch (err) {
+      setIsSubmitting(false);
+      triggerToast('Invalid email/ID or password.', 'error');
     }
   };
 
@@ -662,8 +504,8 @@ export default function App() {
       }
     }
 
-    if (!signupPassword || signupPassword.length < 6) {
-      triggerToast('Password must be at least 6 characters.', 'error');
+    if (!signupPassword || signupPassword.length < 8) {
+      triggerToast('Password must be at least 8 characters long.', 'error');
       return;
     }
 
@@ -682,39 +524,33 @@ export default function App() {
 
     try {
       const generatedUserId = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-      let response: Response | null = null;
+      const response = await fetch('/api/auth/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: generatedUserId,
+          username: trimmedUsername,
+          realName: signupRealName.trim() || 'Anonymous Vault Member',
+          email: signupMode === 'email' ? signupEmail.trim() : undefined,
+          phone: signupMode === 'phone' ? signupPhone.replace(/[\s\-\(\)]/g, '') : undefined,
+          password: signupPassword,
+          loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
+        })
+      });
+
       let data: any = null;
-
-      try {
-        response = await fetch('/api/auth/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: generatedUserId,
-            username: signupUsername.trim(),
-            realName: signupRealName.trim() || 'Anonymous Vault Member',
-            email: signupMode === 'email' ? signupEmail.trim() : undefined,
-            phone: signupMode === 'phone' ? signupPhone.replace(/[\s\-\(\)]/g, '') : undefined,
-            password: signupPassword,
-            loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
-          })
-        });
-
-        const contentType = response?.headers?.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          try {
-            data = await response.json();
-          } catch (jsonErr) {
-            console.error('[REGISTRATION_ERROR] JSON Parse Error:', jsonErr);
-          }
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          console.error('[REGISTRATION_ERROR] JSON Parse Error:', jsonErr);
         }
-      } catch (networkErr: any) {
-        console.warn('[REGISTRATION_WARNING] Server unreachable, attempting local vault fallback:', networkErr);
       }
 
       setIsSubmitting(false);
 
-      if ((response?.ok || response?.status === 201) && data && data.success && data.user) {
+      if ((response.ok || response.status === 201) && data && data.success && data.user) {
         const newAccount: UserAccount = data.user;
         setCurrentUser(newAccount);
         setIsAuthenticated(true);
@@ -734,88 +570,20 @@ export default function App() {
         if (data.redirectTo === '/admin') {
           setSidebarTab('admin');
           window.location.hash = '#/admin';
-          triggerToast('Superadmin Profile forged! Admin Governance Panel unlocked.', 'success');
+          triggerToast('Superadmin Profile created! Admin Governance Panel unlocked.', 'success');
         } else {
           setSidebarTab('home');
           window.location.hash = '#/home';
-          triggerToast('Your secure public identity has been forged!', 'success');
+          triggerToast('Your secure public identity has been created!', 'success');
         }
-      } else if (data && (data.message || data.error)) {
-        // Specific message or error returned by backend server (e.g. DUPLICATE_EMAIL, DUPLICATE_USERNAME, RATE_LIMIT)
-        const errorMessage = data.message || data.error;
-        triggerToast(errorMessage, 'error');
       } else {
-        // Resilient Local Vault Fallback Registration if backend returns 500 / non-JSON or is unreachable
-        const cleanEmail = signupMode === 'email' ? signupEmail.trim() : undefined;
-        const cleanPhone = signupMode === 'phone' ? signupPhone.replace(/[\s\-\(\)]/g, '') : undefined;
-        const cleanUsername = signupUsername.trim();
-
-        const localDuplicate = accounts.find(
-          a => (cleanUsername && a.username.toLowerCase() === cleanUsername.toLowerCase()) ||
-               (cleanEmail && a.email?.toLowerCase() === cleanEmail.toLowerCase()) ||
-               (cleanPhone && a.phone === cleanPhone)
-        );
-
-        if (localDuplicate) {
-          if (cleanEmail && localDuplicate.email?.toLowerCase() === cleanEmail.toLowerCase()) {
-            triggerToast('An account with this email address already exists. Please log in.', 'error');
-          } else if (cleanPhone && localDuplicate.phone === cleanPhone) {
-            triggerToast('An account with this mobile number already exists. Please log in.', 'error');
-          } else {
-            triggerToast('This handle is already taken. Please choose another username.', 'error');
-          }
-          return;
-        }
-
-        // Forge account in client-side storage
-        const assignedRole = (cleanEmail?.toLowerCase() === 'kavyanagpal0005@gmail.com') ? 'super_admin' : 'user';
-        const fallbackAccount: UserAccount = {
-          id: generatedUserId,
-          username: cleanUsername,
-          realName: signupRealName.trim() || 'Anonymous Vault Member',
-          email: cleanEmail,
-          phone: cleanPhone,
-          password: signupPassword,
-          avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-          bio: 'Incognito privacy-first network node.',
-          karma: 25,
-          joinDate: 'Jul 2026',
-          badges: ['Verified', 'Privacy Vault'],
-          loginMethod: signupMode === 'email' ? 'Email' : 'Mobile',
-          deviceInfo: navigator.userAgent || 'Browser Client',
-          ipAddress: '127.0.0.1',
-          role: assignedRole,
-          twoFactorEnabled: false
-        };
-
-        setCurrentUser(fallbackAccount);
-        setIsAuthenticated(true);
-        setAccounts(prev => [fallbackAccount, ...prev]);
-        localStorage.setItem('incognito_current_user', JSON.stringify(fallbackAccount));
-        localStorage.setItem('aetheris_current_user', JSON.stringify(fallbackAccount));
-
-        setSignupUsername('');
-        setSignupEmail('');
-        setSignupPhone('');
-        setSignupPassword('');
-        setSignupConfirmPassword('');
-        setSignupRealName('');
-        setAgreeToTerms(false);
-
-        if (assignedRole === 'super_admin') {
-          setSidebarTab('admin');
-          window.location.hash = '#/admin';
-          triggerToast('Superadmin Profile forged! Admin Governance Panel unlocked.', 'success');
-        } else {
-          setSidebarTab('home');
-          window.location.hash = '#/home';
-          triggerToast('Your secure public identity has been forged!', 'success');
-        }
+        const errorMessage = data?.message || data?.error || 'An account with these credentials already exists.';
+        triggerToast(errorMessage, 'error');
       }
     } catch (err: any) {
       console.error('[REGISTRATION_ERROR] Unhandled Exception:', err);
       setIsSubmitting(false);
-      triggerToast(err?.message || 'Registration error occurred. Please try again.', 'error');
+      triggerToast('An error occurred during registration. Please try again.', 'error');
     }
   };
 
@@ -1720,6 +1488,20 @@ export default function App() {
                         onViewUserProfile={(username) => setViewingProfileUsername(username)}
                       />
                     </motion.div>
+                  ) : sidebarTab === 'communities' ? (
+                    <motion.div
+                      key="communities-view"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <CommunitiesView
+                        currentUser={currentUser!}
+                        onTriggerToast={triggerToast}
+                        onSelectUser={(username) => setViewingProfileUsername(username)}
+                      />
+                    </motion.div>
                   ) : sidebarTab === 'leaderboard' ? (
                     <motion.div
                       key="leaderboard-view"
@@ -1949,7 +1731,14 @@ export default function App() {
               {/* FLOATING ACTION BUTTON FOR POSTING AND DRAFTING */}
               <FloatingPostButton
                 currentUser={currentUser!}
-                onPostCreated={(newPost) => setPosts(prev => [newPost, ...prev])}
+                onPostCreated={(newPost) => {
+                  setPosts(prev => [newPost, ...prev]);
+                  fetch('/api/posts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newPost)
+                  }).catch(err => console.error('Error syncing post to network:', err));
+                }}
                 onTriggerToast={triggerToast}
                 isAnonymousMode={isAnonymousMode}
               />

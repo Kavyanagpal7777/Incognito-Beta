@@ -27,6 +27,7 @@ interface PublicFeedProps {
   searchQuery: string;
   isAnonymousMode: boolean;
   onViewUserProfile?: (username: string) => void;
+  onDeletePost?: (postId: string) => void;
 }
 
 export const CATEGORY_TABS = [
@@ -45,14 +46,20 @@ export default function PublicFeed({
   onTriggerToast,
   searchQuery,
   isAnonymousMode,
-  onViewUserProfile
+  onViewUserProfile,
+  onDeletePost
 }: PublicFeedProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [feedSort, setFeedSort] = useState<'latest' | 'trending'>('latest');
 
   // Handle New Post Creation
   const handlePostCreated = (newPost: Post) => {
-    setPosts([newPost, ...posts]);
+    setPosts(prev => [newPost, ...prev]);
+    fetch('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPost)
+    }).catch(err => console.error('Error posting to server:', err));
   };
 
   // Upvote Handler
@@ -70,6 +77,8 @@ export default function PublicFeed({
         return post;
       })
     );
+    fetch(`/api/posts/${postId}/upvote`, { method: 'POST' })
+      .catch(err => console.error('Error upvoting on server:', err));
   };
 
   // Save / Bookmark Handler
@@ -112,6 +121,12 @@ export default function PublicFeed({
       })
     );
 
+    fetch(`/api/posts/${postId}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newComment)
+    }).catch(err => console.error('Error adding comment on server:', err));
+
     onTriggerToast('Comment posted anonymously!', 'success');
   };
 
@@ -142,12 +157,36 @@ export default function PublicFeed({
         return post;
       })
     );
+
+    fetch(`/api/posts/${postId}/poll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ optionId })
+    }).catch(err => console.error('Error recording poll vote on server:', err));
+
     onTriggerToast('Poll vote recorded!', 'success');
   };
 
   // Report Handler
   const handleReportPost = (postId: string) => {
     onTriggerToast('Post flagged for community moderation review.', 'info');
+  };
+
+  // Delete Post Handler
+  const handleDeletePost = (postId: string) => {
+    if (onDeletePost) {
+      onDeletePost(postId);
+    } else {
+      setPosts(prev => {
+        const updated = prev.filter(p => p.id !== postId);
+        localStorage.setItem('incognito_posts', JSON.stringify(updated));
+        localStorage.setItem('aetheris_posts', JSON.stringify(updated));
+        return updated;
+      });
+      fetch(`/api/posts/${postId}`, { method: 'DELETE' })
+        .catch(err => console.error('Error deleting post on server:', err));
+      onTriggerToast('Post purged and deleted from feed.', 'info');
+    }
   };
 
   // FILTERING LOGIC
@@ -268,6 +307,7 @@ export default function PublicFeed({
               onAddComment={handleAddComment}
               onVotePoll={handleVotePoll}
               onReportPost={handleReportPost}
+              onDeletePost={handleDeletePost}
               onViewUserProfile={onViewUserProfile}
               onTriggerToast={onTriggerToast}
             />
