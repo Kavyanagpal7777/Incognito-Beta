@@ -531,9 +531,13 @@ export default function App() {
     setSubmitMessage('Verifying authentication credentials...');
 
     try {
-      const payload = loginMode === 'email'
-        ? { email: identifier, password: loginPassword }
-        : { phone: identifier, password: loginPassword };
+      const payload = {
+        identifier,
+        email: loginMode === 'email' ? identifier : undefined,
+        phone: loginMode === 'phone' ? identifier : undefined,
+        password: loginPassword,
+        loginMethod: loginMode
+      };
 
       const response = await fetch('/api/auth/login', {
         method: 'POST',

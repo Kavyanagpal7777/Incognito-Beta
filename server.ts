@@ -1898,19 +1898,32 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
     }
 
     // 4. Check if email/phone credentials or username handle already exist
-    const cleanPhone = phone?.replace(/\s+/g, '');
+    const cleanPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : undefined;
 
-    const existingCredentialUser = accountsStore.find(
-      a => (cleanEmail && a.email?.toLowerCase() === cleanEmail.toLowerCase()) ||
-           (cleanPhone && a.phone === cleanPhone)
-    );
+    if (cleanEmail) {
+      const existingEmailUser = accountsStore.find(
+        a => a.email && a.email.toLowerCase() === cleanEmail.toLowerCase()
+      );
+      if (existingEmailUser) {
+        return res.status(409).json({
+          success: false,
+          error: "DUPLICATE_CREDENTIALS",
+          message: "An account with this email already exists."
+        });
+      }
+    }
 
-    if (existingCredentialUser) {
-      return res.status(409).json({
-        success: false,
-        error: "DUPLICATE_CREDENTIALS",
-        message: "An account with these credentials already exists."
-      });
+    if (cleanPhone) {
+      const existingPhoneUser = accountsStore.find(
+        a => a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone
+      );
+      if (existingPhoneUser) {
+        return res.status(409).json({
+          success: false,
+          error: "DUPLICATE_CREDENTIALS",
+          message: "An account with this phone number already exists."
+        });
+      }
     }
 
     const existingUsernameUser = accountsStore.find(
@@ -2088,7 +2101,7 @@ app.post("/api/auth/recover", recoveryRateLimiter, async (req, res) => {
 // AUTHENTICATION ENDPOINT (Rate-Limited, Non-Enumerative, Salt-Hashed, Brute-Force Mitigated)
 // -------------------------------------------------------------------------
 app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res) => {
-  const { email, phone, identifier, password, userId, twoFactorCode } = req.body || {};
+  const { email, phone, identifier, password, userId, loginMethod, twoFactorCode } = req.body || {};
   const clientIp = getCleanIp(req);
 
   // 1. Validate presence of identifier and password
@@ -2128,18 +2141,37 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
     });
   }
 
-  // 3. Search database for account by identifier (email, handle, phone, or ID)
+  // 3. Search database for account using ONLY the submitted identifier
+  let match: UserAccount | undefined;
   const cleanIdLower = targetIdentifier.toLowerCase();
   const cleanPhone = targetIdentifier.replace(/[\s\-\(\)]/g, '');
 
-  const match = accountsStore.find(a =>
-    a.id === targetIdentifier ||
-    (a.email && a.email.toLowerCase() === cleanIdLower) ||
-    (a.username && a.username.toLowerCase() === cleanIdLower) ||
-    (a.phone && a.phone === cleanPhone)
-  );
+  if (loginMethod === 'phone' || (phone && !email)) {
+    // Phone lookup: find account WHERE phone matches submitted phone identifier
+    match = accountsStore.find(a =>
+      (a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone) ||
+      (a.phone && cleanPhone.endsWith(a.phone.replace(/[\s\-\(\)]/g, ''))) ||
+      (a.phone && a.phone.replace(/[\s\-\(\)]/g, '').endsWith(cleanPhone)) ||
+      a.id === targetIdentifier
+    );
+  } else if (loginMethod === 'email' || email || targetIdentifier.includes('@')) {
+    // Email lookup: find account WHERE email matches submitted email identifier
+    match = accountsStore.find(a =>
+      (a.email && a.email.toLowerCase() === cleanIdLower) ||
+      (a.username && a.username.toLowerCase() === cleanIdLower) ||
+      a.id === targetIdentifier
+    );
+  } else {
+    // General identifier lookup: find account by email, handle, phone, or ID
+    match = accountsStore.find(a =>
+      a.id === targetIdentifier ||
+      (a.email && a.email.toLowerCase() === cleanIdLower) ||
+      (a.username && a.username.toLowerCase() === cleanIdLower) ||
+      (a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone)
+    );
+  }
 
-  // 4. Retrieve stored password hash & salt, verify timing-safely
+  // 4. Retrieve stored password hash & salt for THAT account, verify timing-safely
   let passwordMatches = false;
   if (match && match.salt && match.passwordHash) {
     const computedHash = hashPassword(password, match.salt);
