@@ -140,7 +140,19 @@ export default function App() {
     // 1. Initial Accounts
     const localAccounts = localStorage.getItem('incognito_accounts') || localStorage.getItem('aetheris_accounts');
     if (localAccounts) {
-      setAccounts(JSON.parse(localAccounts));
+      try {
+        const parsed: UserAccount[] = JSON.parse(localAccounts);
+        const sanitized = parsed.map((acc: UserAccount) => {
+          if (acc.id === 'usr_4' && acc.email === 'kavyanagpal0005@gmail.com') {
+            return { ...acc, email: 'void@incognito.sec', realName: 'Cipher Nexus' };
+          }
+          return acc;
+        });
+        setAccounts(sanitized);
+        localStorage.setItem('incognito_accounts', JSON.stringify(sanitized));
+      } catch (e) {
+        setAccounts(INITIAL_ACCOUNTS);
+      }
     } else {
       localStorage.setItem('incognito_accounts', JSON.stringify(INITIAL_ACCOUNTS));
       setAccounts(INITIAL_ACCOUNTS);
