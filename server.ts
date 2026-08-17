@@ -1877,8 +1877,8 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       });
     }
 
-    // 2. Validate email format if provided
-    const cleanEmail = email?.trim();
+    // 2. Validate and sanitize email format if provided
+    const cleanEmail = email ? email.trim().toLowerCase() : undefined;
     if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({
         success: false,
@@ -1887,8 +1887,9 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       });
     }
 
-    // 3. Validate username handle format
-    const cleanUsername = username?.trim();
+    // 3. Validate username handle format (strip leading @ if present)
+    const rawUsername = username?.trim();
+    const cleanUsername = rawUsername?.startsWith('@') ? rawUsername.slice(1) : rawUsername;
     if (!cleanUsername || cleanUsername.length < 3 || cleanUsername.length > 20 || !/^[a-zA-Z0-9_.]+$/.test(cleanUsername)) {
       return res.status(400).json({
         success: false,
@@ -1902,13 +1903,14 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
 
     if (cleanEmail) {
       const existingEmailUser = accountsStore.find(
-        a => a.email && a.email.toLowerCase() === cleanEmail.toLowerCase()
+        a => a.email && a.email.trim().toLowerCase() === cleanEmail
       );
       if (existingEmailUser) {
         return res.status(409).json({
           success: false,
-          error: "DUPLICATE_CREDENTIALS",
-          message: "An account with this email already exists."
+          error: "DUPLICATE_EMAIL",
+          field: "email",
+          message: "Account already exists with this email"
         });
       }
     }
@@ -1920,21 +1922,23 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       if (existingPhoneUser) {
         return res.status(409).json({
           success: false,
-          error: "DUPLICATE_CREDENTIALS",
+          error: "DUPLICATE_PHONE",
+          field: "phone",
           message: "An account with this phone number already exists."
         });
       }
     }
 
     const existingUsernameUser = accountsStore.find(
-      a => cleanUsername && a.username.toLowerCase() === cleanUsername.toLowerCase()
+      a => cleanUsername && a.username.trim().toLowerCase() === cleanUsername.toLowerCase()
     );
 
     if (existingUsernameUser) {
       return res.status(409).json({
         success: false,
         error: "USERNAME_TAKEN",
-        message: "That username is already taken."
+        field: "username",
+        message: "Handle taken"
       });
     }
 
@@ -2105,8 +2109,8 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
   const clientIp = getCleanIp(req);
 
   // 1. Validate presence of identifier and password
-  const targetIdentifier = (email || phone || identifier || userId || "").toString().trim();
-  if (!targetIdentifier || !password || typeof password !== 'string' || !password.trim()) {
+  const rawIdentifier = (email || phone || identifier || userId || "").toString().trim();
+  if (!rawIdentifier || !password || typeof password !== 'string' || !password.trim()) {
     recordFailedLoginAttempt(clientIp);
     return res.status(400).json({
       success: false,
@@ -2115,9 +2119,15 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
     });
   }
 
-  // 2. Format validation for email identifiers
-  if (targetIdentifier.includes('@')) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetIdentifier)) {
+  // Sanitize identifier: trim and lowercase
+  const targetIdentifier = rawIdentifier.trim();
+  const cleanIdLower = targetIdentifier.toLowerCase();
+  const cleanHandleLower = cleanIdLower.startsWith('@') ? cleanIdLower.slice(1).trim() : cleanIdLower;
+  const cleanPhone = targetIdentifier.replace(/[\s\-\(\)]/g, '');
+
+  // 2. Format validation for standard email identifiers (if not an @handle)
+  if (cleanIdLower.includes('@') && !cleanIdLower.startsWith('@')) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanIdLower)) {
       recordFailedLoginAttempt(clientIp, targetIdentifier);
       return res.status(400).json({
         success: false,
@@ -2128,7 +2138,7 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
   }
 
   // Check account-level lockout key
-  const accountLockKey = `lockout_acc_${targetIdentifier.toLowerCase()}`;
+  const accountLockKey = `lockout_acc_${cleanIdLower}`;
   const now = Date.now();
   const accLockEntry = rateLimitMap.get(accountLockKey);
   if (accLockEntry?.lockoutUntil && now < accLockEntry.lockoutUntil) {
@@ -2141,12 +2151,10 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
     });
   }
 
-  // 3. Search database for account using ONLY the submitted identifier
+  // 3. Search database for account by Email, Handle (@handle), Phone, or ID
   let match: UserAccount | undefined;
-  const cleanIdLower = targetIdentifier.toLowerCase();
-  const cleanPhone = targetIdentifier.replace(/[\s\-\(\)]/g, '');
 
-  if (loginMethod === 'phone' || (phone && !email)) {
+  if (loginMethod === 'phone' || (phone && !email && !targetIdentifier.includes('@'))) {
     // Phone lookup: find account WHERE phone matches submitted phone identifier
     match = accountsStore.find(a =>
       (a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone) ||
@@ -2154,20 +2162,13 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
       (a.phone && a.phone.replace(/[\s\-\(\)]/g, '').endsWith(cleanPhone)) ||
       a.id === targetIdentifier
     );
-  } else if (loginMethod === 'email' || email || targetIdentifier.includes('@')) {
-    // Email lookup: find account WHERE email matches submitted email identifier
-    match = accountsStore.find(a =>
-      (a.email && a.email.toLowerCase() === cleanIdLower) ||
-      (a.username && a.username.toLowerCase() === cleanIdLower) ||
-      a.id === targetIdentifier
-    );
   } else {
-    // General identifier lookup: find account by email, handle, phone, or ID
+    // Email OR Handle lookup: allow login with either Email OR Handle (@PhotonForge or PhotonForge)
     match = accountsStore.find(a =>
-      a.id === targetIdentifier ||
-      (a.email && a.email.toLowerCase() === cleanIdLower) ||
-      (a.username && a.username.toLowerCase() === cleanIdLower) ||
-      (a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone)
+      (a.email && a.email.trim().toLowerCase() === cleanIdLower) ||
+      (a.username && a.username.trim().toLowerCase() === cleanHandleLower) ||
+      (a.username && a.username.trim().toLowerCase() === cleanIdLower) ||
+      a.id === targetIdentifier
     );
   }
 
@@ -2182,6 +2183,15 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
       );
     } catch {
       passwordMatches = false;
+    }
+  } else if (match && (match as any).password) {
+    // Legacy support
+    if ((match as any).password === password) {
+      passwordMatches = true;
+      const newSalt = `salt_${Date.now().toString(36)}_${crypto.randomBytes(8).toString('hex')}`;
+      match.salt = newSalt;
+      match.passwordHash = hashPassword(password, newSalt);
+      delete (match as any).password;
     }
   }
 

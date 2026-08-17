@@ -528,7 +528,7 @@ export default function App() {
     if (loginMode === 'email') {
       identifier = loginEmail.trim();
       if (!identifier || !loginPassword) {
-        triggerToast('Please provide both your email/ID and password.', 'error');
+        triggerToast('Please provide both your email/handle and password.', 'error');
         return;
       }
     } else {
@@ -543,9 +543,11 @@ export default function App() {
     setSubmitMessage('Verifying authentication credentials...');
 
     try {
+      // Sanitize: lowercase for email/handle
+      const cleanIdentifier = loginMode === 'email' ? identifier.toLowerCase() : identifier;
       const payload = {
-        identifier,
-        email: loginMode === 'email' ? identifier : undefined,
+        identifier: cleanIdentifier,
+        email: loginMode === 'email' ? cleanIdentifier : undefined,
         phone: loginMode === 'phone' ? identifier : undefined,
         password: loginPassword,
         loginMethod: loginMode
@@ -603,29 +605,31 @@ export default function App() {
     e.preventDefault();
 
     const trimmedUsername = signupUsername.trim();
-    if (!trimmedUsername) {
+    const cleanUsername = trimmedUsername.startsWith('@') ? trimmedUsername.slice(1) : trimmedUsername;
+    if (!cleanUsername) {
       triggerToast('Please enter a username handle.', 'error');
       return;
     }
 
-    if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
+    if (cleanUsername.length < 3 || cleanUsername.length > 20) {
       triggerToast('Username must be 3–20 characters.', 'error');
       return;
     }
 
-    if (!/^[a-zA-Z0-9_.]+$/.test(trimmedUsername)) {
+    if (!/^[a-zA-Z0-9_.]+$/.test(cleanUsername)) {
       triggerToast('Only letters, numbers, underscores (_), and periods (.) allowed in handle.', 'error');
       return;
     }
 
-    const isTaken = accounts.some(acc => acc.username.toLowerCase() === trimmedUsername.toLowerCase());
+    const isTaken = accounts.some(acc => acc.username.trim().toLowerCase() === cleanUsername.toLowerCase());
     if (isTaken) {
-      triggerToast('This handle is already taken. Please choose another username.', 'error');
+      triggerToast('Handle taken', 'error');
       return;
     }
 
+    const sanitizedEmail = signupEmail.trim().toLowerCase();
     if (signupMode === 'email') {
-      if (!signupEmail.trim() || !/\S+@\S+\.\S+/.test(signupEmail)) {
+      if (!sanitizedEmail || !/\S+@\S+\.\S+/.test(sanitizedEmail)) {
         triggerToast('Please enter a valid email address.', 'error');
         return;
       }
@@ -662,9 +666,9 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: generatedUserId,
-          username: trimmedUsername,
+          username: cleanUsername,
           realName: signupRealName.trim() || 'Anonymous Vault Member',
-          email: signupMode === 'email' ? signupEmail.trim() : undefined,
+          email: signupMode === 'email' ? sanitizedEmail : undefined,
           phone: signupMode === 'phone' ? signupPhone.replace(/[\s\-\(\)]/g, '') : undefined,
           password: signupPassword,
           loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
@@ -710,6 +714,22 @@ export default function App() {
           triggerToast('Your secure public identity has been created!', 'success');
         }
       } else {
+        // Handle explicit collision cases
+        if (data?.field === 'email' || data?.error === 'DUPLICATE_EMAIL' || (data?.message && data.message.toLowerCase().includes('already exists with this email'))) {
+          triggerToast('Account already exists with this email', 'error');
+          if (sanitizedEmail) {
+            setLoginEmail(sanitizedEmail);
+            setLoginMode('email');
+            setAuthTab('login');
+          }
+          return;
+        }
+
+        if (data?.field === 'username' || data?.error === 'USERNAME_TAKEN' || (data?.message && data.message.toLowerCase().includes('handle taken'))) {
+          triggerToast('Handle taken', 'error');
+          return;
+        }
+
         const errorMessage = data?.message || data?.error || 'An account with these credentials already exists.';
         triggerToast(errorMessage, 'error');
       }
@@ -1246,7 +1266,7 @@ export default function App() {
                               {(authTab === 'login' ? loginMode === 'email' : signupMode === 'email') ? (
                                 <>
                                   <Mail className="w-3 h-3 text-cyan-400" />
-                                  <span>EMAIL ADDRESS</span>
+                                  <span>{authTab === 'login' ? 'EMAIL OR HANDLE' : 'EMAIL ADDRESS'}</span>
                                 </>
                               ) : (
                                 <>
@@ -1291,13 +1311,13 @@ export default function App() {
 
                           {((authTab === 'login' && loginMode === 'email') || (authTab === 'signup' && signupMode === 'email')) ? (
                             <input
-                              type="email"
+                              type={authTab === 'login' ? "text" : "email"}
                               value={authTab === 'login' ? loginEmail : signupEmail}
                               onChange={(e) => {
                                 if (authTab === 'login') setLoginEmail(e.target.value);
                                 else setSignupEmail(e.target.value);
                               }}
-                              placeholder="secure@incognito.io"
+                              placeholder={authTab === 'login' ? "Email or @handle" : "secure@incognito.io"}
                               className="w-full px-3.5 py-2 min-h-[44px] rounded-xl bg-black/50 border border-white/10 text-white placeholder-white/20 text-xs outline-none focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,217,255,0.25)] transition-all"
                             />
                           ) : (
