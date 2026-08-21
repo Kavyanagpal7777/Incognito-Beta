@@ -55,12 +55,15 @@ import UserProfileModal from './components/UserProfileModal';
 import AdminGovernancePanel from './components/AdminGovernancePanel';
 import WelcomeLegalGateway from './components/WelcomeLegalGateway';
 import FloatingPostButton from './components/FloatingPostButton';
+import { ClerkAuthBridge, ClerkUserBadge } from './components/ClerkAuthBridge';
+import { ClerkConfigModal } from './components/ClerkConfigModal';
 import { Home, Trophy, MessageSquare, Menu, X as CloseIcon } from 'lucide-react';
 
 const CURRENT_POLICY_VERSION = "1.0";
 
-export default function App() {
+export default function App({ isClerkConfigured = false }: { isClerkConfigured?: boolean }) {
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0, normalizedX: 0, normalizedY: 0 });
+  const [isClerkModalOpen, setIsClerkModalOpen] = useState(false);
 
   // Authentication & DB states (Persisted in Local Storage)
   const [accounts, setAccounts] = useState<UserAccount[]>([]);
@@ -839,6 +842,12 @@ export default function App() {
 
   return (
     <InteractiveAtmosphere onMouseMoveCoords={setMouseCoords}>
+      {/* CLERK DASHBOARD CONFIGURATION / HELP MODAL */}
+      <ClerkConfigModal
+        isOpen={isClerkModalOpen}
+        onClose={() => setIsClerkModalOpen(false)}
+      />
+
       {/* WELCOME & LEGAL GATEWAY MODAL FOR UNVERIFIED / FIRST-TIME / UPDATED USERS */}
       {!hasAcceptedPolicy && (
         <WelcomeLegalGateway
@@ -1505,6 +1514,60 @@ export default function App() {
                         <ArrowRight className="w-4 h-4 text-white" />
                       </button>
 
+                      {/* CLERK SSO INTEGRATION SECTION */}
+                      <div className="pt-1">
+                        <div className="relative flex py-2 items-center">
+                          <div className="flex-grow border-t border-white/10"></div>
+                          <span className="flex-shrink mx-3 text-[9.5px] uppercase font-mono tracking-widest text-white/40">OR ENTER WITH</span>
+                          <div className="flex-grow border-t border-white/10"></div>
+                        </div>
+
+                        {isClerkConfigured ? (
+                          <ClerkAuthBridge
+                            activeMode={authTab === 'signup' ? 'signup' : 'login'}
+                            triggerToast={triggerToast}
+                            onSyncSuccess={(syncedUser, redirectTo) => {
+                              setCurrentUser(syncedUser);
+                              setIsAuthenticated(true);
+                              localStorage.setItem('incognito_current_user', JSON.stringify(syncedUser));
+                              if (redirectTo === '/admin') {
+                                setSidebarTab('admin');
+                                window.location.hash = '#/admin';
+                              } else {
+                                setSidebarTab('home');
+                                window.location.hash = '#/home';
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="space-y-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsClerkModalOpen(true)}
+                              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600/30 via-indigo-600/30 to-cyan-600/30 hover:from-purple-600/50 hover:via-indigo-600/50 hover:to-cyan-600/50 border border-purple-500/40 hover:border-cyan-400/60 text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_25px_rgba(0,217,255,0.35)] cursor-pointer group"
+                              id="btn-clerk-sso-cta"
+                            >
+                              <div className="p-1 rounded-lg bg-purple-500/30 border border-purple-400/40 text-purple-300 group-hover:scale-105 transition-transform">
+                                <KeyRound className="w-3.5 h-3.5 text-purple-300" />
+                              </div>
+                              <span>{authTab === 'signup' ? 'Sign Up with Clerk SSO' : 'Continue with Clerk (SSO / Passkey)'}</span>
+                              <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                            </button>
+                            <div className="flex items-center justify-center gap-1 text-[10px] text-purple-300/70">
+                              <span>Enterprise Clerk Auth Ready</span>
+                              <span>•</span>
+                              <button
+                                type="button"
+                                onClick={() => setIsClerkModalOpen(true)}
+                                className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                              >
+                                View Keys Setup
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Bottom Status Badges */}
                       <div className="pt-2 border-t border-white/5 flex items-center justify-center gap-2 text-[10px] text-white/50 font-medium">
                         <span>✓ Anonymous</span>
@@ -1612,6 +1675,8 @@ export default function App() {
                 onLogout={handleLogout}
                 onOpenSettings={() => setSidebarTab('settings')}
                 onNavigateTab={setSidebarTab}
+                isClerkConfigured={isClerkConfigured}
+                onOpenClerkSetup={() => setIsClerkModalOpen(true)}
               />
 
               {/* SCROLLABLE MAIN CONTENT AREA */}
