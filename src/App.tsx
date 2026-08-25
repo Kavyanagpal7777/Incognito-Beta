@@ -133,6 +133,9 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
   const loginDropdownRef = useRef<HTMLDivElement>(null);
   const signupDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Duplicate email account conflict banner state
+  const [accountConflictNotice, setAccountConflictNotice] = useState<string | null>(null);
+
   // FX feedback states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
@@ -719,7 +722,9 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
       } else {
         // Handle explicit collision cases
         if (data?.field === 'email' || data?.error === 'DUPLICATE_EMAIL' || (data?.message && data.message.toLowerCase().includes('already exists with this email'))) {
-          triggerToast('Account already exists with this email', 'error');
+          const conflictMsg = 'You already have an account with this email';
+          setAccountConflictNotice(conflictMsg);
+          triggerToast(conflictMsg, 'info');
           if (sanitizedEmail) {
             setLoginEmail(sanitizedEmail);
             setLoginMode('email');
@@ -1082,7 +1087,7 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
                     <div className="grid grid-cols-2 gap-1 relative z-10">
                       <button
                         type="button"
-                        onClick={() => { setAuthTab('login'); setRecoveryNotice(null); }}
+                        onClick={() => { setAuthTab('login'); setRecoveryNotice(null); setAccountConflictNotice(null); }}
                         className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
                           authTab === 'login'
                             ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white shadow-[0_0_15px_rgba(0,217,255,0.4)]'
@@ -1094,7 +1099,7 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setAuthTab('signup'); setRecoveryNotice(null); }}
+                        onClick={() => { setAuthTab('signup'); setRecoveryNotice(null); setAccountConflictNotice(null); }}
                         className={`py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
                           authTab === 'signup'
                             ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white shadow-[0_0_15px_rgba(0,217,255,0.4)]'
@@ -1107,6 +1112,41 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
                     </div>
                   </div>
                 )}
+
+                {/* ACCOUNT CONFLICT NOTIFICATION BANNER */}
+                <AnimatePresence>
+                  {accountConflictNotice && authTab === 'login' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      exit={{ opacity: 0, y: -6, height: 0 }}
+                      className="mb-3 p-3 rounded-xl bg-cyan-950/60 border border-cyan-400/50 shadow-[0_0_20px_rgba(0,217,255,0.2)] text-left flex items-start justify-between gap-2 overflow-hidden"
+                      id="account-conflict-banner"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="p-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 flex-shrink-0 mt-0.5">
+                          <ShieldAlert className="w-3.5 h-3.5 text-cyan-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-cyan-200">
+                            {accountConflictNotice}
+                          </p>
+                          <p className="text-[10.5px] text-cyan-300/80 mt-0.5">
+                            We've pre-filled your email address below. Please enter your password to sign in.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAccountConflictNotice(null)}
+                        className="text-cyan-400/70 hover:text-cyan-200 p-1 transition-colors cursor-pointer"
+                        title="Dismiss"
+                      >
+                        <CloseIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* FORM GATEWAY WITH SMOOTH ANIMATED TRANSITION */}
                 <AnimatePresence mode="wait">

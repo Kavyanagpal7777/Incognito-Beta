@@ -2212,7 +2212,7 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
   const clientIp = getCleanIp(req);
 
   // 1. Validate presence of identifier and password
-  const rawIdentifier = (email || phone || identifier || userId || "").toString().trim();
+  const rawIdentifier = (identifier || email || phone || userId || "").toString().trim();
   if (!rawIdentifier || !password || typeof password !== 'string' || !password.trim()) {
     recordFailedLoginAttempt(clientIp);
     return res.status(400).json({
@@ -2222,26 +2222,13 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
     });
   }
 
-  // Sanitize identifier: trim and lowercase
-  const targetIdentifier = rawIdentifier.trim();
-  const cleanIdLower = targetIdentifier.toLowerCase();
-  const cleanHandleLower = cleanIdLower.startsWith('@') ? cleanIdLower.slice(1).trim() : cleanIdLower;
-  const cleanPhone = targetIdentifier.replace(/[\s\-\(\)]/g, '');
-
-  // 2. Format validation for standard email identifiers (if not an @handle)
-  if (cleanIdLower.includes('@') && !cleanIdLower.startsWith('@')) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanIdLower)) {
-      recordFailedLoginAttempt(clientIp, targetIdentifier);
-      return res.status(400).json({
-        success: false,
-        error: "INVALID_CREDENTIALS",
-        message: "Invalid email/ID or password."
-      });
-    }
-  }
+  // Universal normalization: trim and lowercase
+  const cleanInput = rawIdentifier.trim().toLowerCase();
+  const cleanHandle = cleanInput.startsWith('@') ? cleanInput.slice(1).trim() : cleanInput;
+  const cleanPhone = rawIdentifier.replace(/[\s\-\(\)]/g, '');
 
   // Check account-level lockout key
-  const accountLockKey = `lockout_acc_${cleanIdLower}`;
+  const accountLockKey = `lockout_acc_${cleanInput}`;
   const now = Date.now();
   const accLockEntry = rateLimitMap.get(accountLockKey);
   if (accLockEntry?.lockoutUntil && now < accLockEntry.lockoutUntil) {
@@ -2254,24 +2241,24 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
     });
   }
 
-  // 3. Search database for account by Email, Handle (@handle), Phone, or ID
+  // 2. Search database for account: flexible lookup by Email or Handle or Phone or ID
   let match: UserAccount | undefined;
 
-  if (loginMethod === 'phone' || (phone && !email && !targetIdentifier.includes('@'))) {
+  if (loginMethod === 'phone' && !rawIdentifier.includes('@')) {
     // Phone lookup: find account WHERE phone matches submitted phone identifier
     match = accountsStore.find(a =>
       (a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone) ||
       (a.phone && cleanPhone.endsWith(a.phone.replace(/[\s\-\(\)]/g, ''))) ||
       (a.phone && a.phone.replace(/[\s\-\(\)]/g, '').endsWith(cleanPhone)) ||
-      a.id === targetIdentifier
+      a.id === rawIdentifier
     );
   } else {
-    // Email OR Handle lookup: allow login with either Email OR Handle (@PhotonForge or PhotonForge)
+    // Email OR Handle lookup ($or equivalent): check email or username with cleanInput and cleanHandle
     match = accountsStore.find(a =>
-      (a.email && a.email.trim().toLowerCase() === cleanIdLower) ||
-      (a.username && a.username.trim().toLowerCase() === cleanHandleLower) ||
-      (a.username && a.username.trim().toLowerCase() === cleanIdLower) ||
-      a.id === targetIdentifier
+      (a.email && a.email.trim().toLowerCase() === cleanInput) ||
+      (a.username && a.username.trim().toLowerCase() === cleanHandle) ||
+      (a.username && a.username.trim().toLowerCase() === cleanInput) ||
+      a.id === rawIdentifier
     );
   }
 
@@ -2300,7 +2287,7 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
 
   // 5. Reject if account does NOT exist OR password does NOT match (Safe Non-Enumerative Error Response)
   if (!match || !passwordMatches) {
-    recordFailedLoginAttempt(clientIp, targetIdentifier);
+    recordFailedLoginAttempt(clientIp, cleanInput);
 
     return res.status(401).json({
       success: false,
@@ -2310,7 +2297,7 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
   }
 
   // Clear failed attempt counter on successful password verification
-  recordSuccessfulLoginAttempt(clientIp, targetIdentifier);
+  recordSuccessfulLoginAttempt(clientIp, cleanInput);
 
   const adminRoles = ["owner", "super_admin", "admin", "moderator"];
   const isAdmin = adminRoles.includes(match.role || "") || match.email?.toLowerCase() === 'kavyanagpal0005@gmail.com';
