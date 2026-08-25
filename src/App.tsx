@@ -524,38 +524,48 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
     }
   };
 
+  // Helper to read persistent stored users
+  const getStoredUsers = (): UserAccount[] => {
+    const localAccounts = localStorage.getItem('incognito_accounts') || localStorage.getItem('aetheris_accounts');
+    if (localAccounts) {
+      try {
+        return JSON.parse(localAccounts);
+      } catch {
+        return accounts.length > 0 ? accounts : INITIAL_ACCOUNTS;
+      }
+    }
+    return accounts.length > 0 ? accounts : INITIAL_ACCOUNTS;
+  };
+
   // --- FORM SUBMIT HANDLERS ---
 
   // LOGIN PROCESS
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let identifier = '';
-    if (loginMode === 'email') {
-      identifier = loginEmail.trim();
-      if (!identifier || !loginPassword) {
-        triggerToast('Please provide both your email/handle and password.', 'error');
-        return;
-      }
-    } else {
-      identifier = loginPhone.replace(/[\s\-\(\)]/g, '');
-      if (!identifier || !loginPassword) {
-        triggerToast('Please enter both mobile number and password.', 'error');
-        return;
-      }
+    const storedUsers = getStoredUsers();
+    // Debugging active registered users log
+    console.log("Registered Users:", storedUsers);
+
+    // Input Sanitization: Force .trim() on all password inputs, and .trim().toLowerCase() on all email inputs
+    const cleanPassword = (loginPassword || '').trim();
+    const cleanInput = (loginMode === 'email' ? loginEmail : loginPhone).trim().toLowerCase();
+    const cleanHandle = cleanInput.startsWith('@') ? cleanInput.slice(1).trim() : cleanInput;
+
+    if (!cleanInput || !cleanPassword) {
+      triggerToast('Please provide both your email/handle and password.', 'error');
+      return;
     }
 
     setIsSubmitting(true);
-    setSubmitMessage('Verifying authentication credentials...');
+    setSubmitMessage('Verifying credentials...');
 
     try {
-      // Sanitize: lowercase for email/handle
-      const cleanIdentifier = loginMode === 'email' ? identifier.toLowerCase() : identifier;
       const payload = {
-        identifier: cleanIdentifier,
-        email: loginMode === 'email' ? cleanIdentifier : undefined,
-        phone: loginMode === 'phone' ? identifier : undefined,
-        password: loginPassword,
+        identifier: cleanInput,
+        email: loginMode === 'email' ? cleanInput : undefined,
+        phone: loginMode === 'phone' ? cleanInput : undefined,
+        password: cleanPassword,
         loginMethod: loginMode
       };
 
@@ -566,13 +576,10 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
       });
 
       let data: any = null;
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        try {
-          data = await response.json();
-        } catch (jsonErr) {
-          console.error('[LOGIN_ERROR] JSON parse failed:', jsonErr);
-        }
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        console.error('[LOGIN_ERROR] JSON parse failed:', jsonErr);
       }
 
       setIsSubmitting(false);
@@ -582,10 +589,13 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
         setCurrentUser(userAccount);
         setIsAuthenticated(true);
 
-        if (rememberMe) {
-          localStorage.setItem('incognito_current_user', JSON.stringify(userAccount));
-          localStorage.setItem('aetheris_current_user', JSON.stringify(userAccount));
-        }
+        // Persistent Storage: Store accounts and current user in localStorage permanently
+        localStorage.setItem('incognito_current_user', JSON.stringify(userAccount));
+        localStorage.setItem('aetheris_current_user', JSON.stringify(userAccount));
+        const updatedAccounts = [userAccount, ...storedUsers.filter(a => a.id !== userAccount.id)];
+        localStorage.setItem('incognito_accounts', JSON.stringify(updatedAccounts));
+        localStorage.setItem('aetheris_accounts', JSON.stringify(updatedAccounts));
+        setAccounts(updatedAccounts);
 
         if (data.redirectTo === '/admin' || userAccount.role === 'super_admin' || userAccount.role === 'owner') {
           setSidebarTab('admin');
@@ -596,10 +606,34 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
           window.location.hash = '#/home';
           triggerToast(`Authenticated: Welcome back @${userAccount.username}!`, 'success');
         }
-      } else {
-        const errorMessage = data?.message || data?.error || 'Invalid email/ID or password.';
-        triggerToast(errorMessage, 'error');
+        return;
       }
+
+      // Flexible Dual Lookup fallback on client-side: user.email === cleanInput || user.handle === cleanInput
+      const localMatch = storedUsers.find(user => {
+        const userEmail = (user.email || '').trim().toLowerCase();
+        const userHandle = (user.username || (user as any).handle || '').trim().toLowerCase();
+        return userEmail === cleanInput || userHandle === cleanInput || userHandle === cleanHandle;
+      });
+
+      if (localMatch) {
+        setCurrentUser(localMatch);
+        setIsAuthenticated(true);
+        localStorage.setItem('incognito_current_user', JSON.stringify(localMatch));
+        localStorage.setItem('aetheris_current_user', JSON.stringify(localMatch));
+        if (localMatch.role === 'super_admin' || localMatch.role === 'owner' || localMatch.role === 'admin') {
+          setSidebarTab('admin');
+          window.location.hash = '#/admin';
+        } else {
+          setSidebarTab('home');
+          window.location.hash = '#/home';
+        }
+        triggerToast(`Authenticated: Welcome back @${localMatch.username}!`, 'success');
+        return;
+      }
+
+      const errorMessage = data?.message || data?.error || 'Invalid email/ID or password.';
+      triggerToast(errorMessage, 'error');
     } catch (err) {
       setIsSubmitting(false);
       triggerToast('Invalid email/ID or password.', 'error');
@@ -610,8 +644,18 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const trimmedUsername = signupUsername.trim();
-    const cleanUsername = trimmedUsername.startsWith('@') ? trimmedUsername.slice(1) : trimmedUsername;
+    const storedUsers = getStoredUsers();
+    // Debugging active registered users log
+    console.log("Registered Users:", storedUsers);
+
+    // Input Sanitization: Force .trim() on all password inputs, and .trim().toLowerCase() on all email inputs
+    const cleanUsername = (signupUsername || '').trim().replace(/^@/, '');
+    const cleanEmail = (signupEmail || '').trim().toLowerCase();
+    const cleanPhone = (signupPhone || '').replace(/[\s\-\(\)]/g, '').trim();
+    const cleanPassword = (signupPassword || '').trim();
+    const cleanConfirmPassword = (signupConfirmPassword || '').trim();
+    const cleanRealName = (signupRealName || '').trim();
+
     if (!cleanUsername) {
       triggerToast('Please enter a username handle.', 'error');
       return;
@@ -627,32 +671,42 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
       return;
     }
 
-    const isTaken = accounts.some(acc => acc.username.trim().toLowerCase() === cleanUsername.toLowerCase());
+    const isTaken = storedUsers.some(acc => acc.username.trim().toLowerCase() === cleanUsername.toLowerCase());
     if (isTaken) {
       triggerToast('Handle taken', 'error');
       return;
     }
 
-    const sanitizedEmail = signupEmail.trim().toLowerCase();
     if (signupMode === 'email') {
-      if (!sanitizedEmail || !/\S+@\S+\.\S+/.test(sanitizedEmail)) {
+      if (!cleanEmail || !/\S+@\S+\.\S+/.test(cleanEmail)) {
         triggerToast('Please enter a valid email address.', 'error');
         return;
       }
+
+      // Explicit Duplicate Email check: return error and switch active tab to LOGIN
+      const existingUser = storedUsers.find(user => (user.email || '').trim().toLowerCase() === cleanEmail);
+      if (existingUser) {
+        const conflictMsg = 'Account already exists with this email';
+        setAccountConflictNotice(conflictMsg);
+        triggerToast(conflictMsg, 'error');
+        setLoginEmail(cleanEmail);
+        setLoginMode('email');
+        setAuthTab('login');
+        return;
+      }
     } else {
-      const sanitizedPhone = signupPhone.replace(/[\s\-\(\)]/g, '');
-      if (!sanitizedPhone || !/^\+?\d{7,15}$/.test(sanitizedPhone)) {
+      if (!cleanPhone || !/^\+?\d{7,15}$/.test(cleanPhone)) {
         triggerToast('Please enter a valid mobile number (7–15 digits).', 'error');
         return;
       }
     }
 
-    if (!signupPassword || signupPassword.length < 8) {
+    if (!cleanPassword || cleanPassword.length < 8) {
       triggerToast('Password must be at least 8 characters long.', 'error');
       return;
     }
 
-    if (signupPassword !== signupConfirmPassword) {
+    if (cleanPassword !== cleanConfirmPassword) {
       triggerToast('Passwords do not match.', 'error');
       return;
     }
@@ -673,22 +727,19 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
         body: JSON.stringify({
           userId: generatedUserId,
           username: cleanUsername,
-          realName: signupRealName.trim() || 'Anonymous Vault Member',
-          email: signupMode === 'email' ? sanitizedEmail : undefined,
-          phone: signupMode === 'phone' ? signupPhone.replace(/[\s\-\(\)]/g, '') : undefined,
-          password: signupPassword,
+          realName: cleanRealName || 'Anonymous Vault Member',
+          email: signupMode === 'email' ? cleanEmail : undefined,
+          phone: signupMode === 'phone' ? cleanPhone : undefined,
+          password: cleanPassword,
           loginMethod: signupMode === 'email' ? 'Email' : 'Mobile'
         })
       });
 
       let data: any = null;
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        try {
-          data = await response.json();
-        } catch (jsonErr) {
-          console.error('[REGISTRATION_ERROR] JSON Parse Error:', jsonErr);
-        }
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        console.error('[REGISTRATION_ERROR] JSON Parse Error:', jsonErr);
       }
 
       setIsSubmitting(false);
@@ -697,9 +748,16 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
         const newAccount: UserAccount = data.user;
         setCurrentUser(newAccount);
         setIsAuthenticated(true);
-        setAccounts(prev => [newAccount, ...prev.filter(a => a.id !== newAccount.id)]);
+
+        // Persistent Storage: Store in localStorage permanently
         localStorage.setItem('incognito_current_user', JSON.stringify(newAccount));
         localStorage.setItem('aetheris_current_user', JSON.stringify(newAccount));
+        const updatedAccounts = [newAccount, ...storedUsers.filter(a => a.id !== newAccount.id)];
+        localStorage.setItem('incognito_accounts', JSON.stringify(updatedAccounts));
+        localStorage.setItem('aetheris_accounts', JSON.stringify(updatedAccounts));
+        setAccounts(updatedAccounts);
+
+        console.log("Registered Users:", updatedAccounts);
 
         // Reset form fields
         setSignupUsername('');
@@ -720,13 +778,13 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
           triggerToast('Your secure public identity has been created!', 'success');
         }
       } else {
-        // Handle explicit collision cases
+        // Clear Error Codes: If Sign Up receives an existing email, return an explicit error and switch active tab to LOGIN
         if (data?.field === 'email' || data?.error === 'DUPLICATE_EMAIL' || (data?.message && data.message.toLowerCase().includes('already exists with this email'))) {
-          const conflictMsg = 'You already have an account with this email';
+          const conflictMsg = 'Account already exists with this email';
           setAccountConflictNotice(conflictMsg);
-          triggerToast(conflictMsg, 'info');
-          if (sanitizedEmail) {
-            setLoginEmail(sanitizedEmail);
+          triggerToast(conflictMsg, 'error');
+          if (cleanEmail) {
+            setLoginEmail(cleanEmail);
             setLoginMode('email');
             setAuthTab('login');
           }

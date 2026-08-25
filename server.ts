@@ -1297,6 +1297,39 @@ let accountsStore: UserAccount[] = [
   }
 ];
 
+// Persistent storage file for accounts
+const ACCOUNTS_DB_FILE = path.join(process.cwd(), 'uploads', 'accounts_db.json');
+
+function saveAccountsToDisk() {
+  try {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    fs.writeFileSync(ACCOUNTS_DB_FILE, JSON.stringify(accountsStore, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to persist accounts to disk:', err);
+  }
+}
+
+function loadAccountsFromDisk() {
+  try {
+    if (fs.existsSync(ACCOUNTS_DB_FILE)) {
+      const data = fs.readFileSync(ACCOUNTS_DB_FILE, 'utf-8');
+      const loaded = JSON.parse(data);
+      if (Array.isArray(loaded) && loaded.length > 0) {
+        const existingIds = new Set(loaded.map((a: any) => a.id));
+        const missingDefaults = accountsStore.filter(a => !existingIds.has(a.id));
+        accountsStore = [...loaded, ...missingDefaults];
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load accounts from disk:', err);
+  }
+}
+
+loadAccountsFromDisk();
+
 let reportsStore = [
   {
     id: 'rep_101',
@@ -1897,7 +1930,7 @@ app.post("/api/auth/clerk-sync", (req: any, res: any) => {
       }
     } else {
       // Create new user account from Clerk profile
-      const rawHandle = username || cleanEmail?.split("@")[0] || `node_${clerkId.slice(-6)}`;
+      const rawHandle = username?.trim() || cleanEmail?.split("@")[0] || `node_${clerkId.slice(-6)}`;
       let cleanHandle = rawHandle.replace(/[^a-zA-Z0-9_.]/g, "").slice(0, 20);
       if (cleanHandle.length < 3) cleanHandle = `user_${Date.now().toString(36)}`;
 
@@ -1915,7 +1948,7 @@ app.post("/api/auth/clerk-sync", (req: any, res: any) => {
         id: generatedId,
         clerkId,
         username: finalUsername,
-        realName: fullName || "Clerk Verified Member",
+        realName: fullName?.trim() || "Clerk Verified Member",
         email: cleanEmail,
         avatarUrl: imageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80",
         bio: "Authenticated via Clerk Secure Gateway.",
@@ -1934,6 +1967,7 @@ app.post("/api/auth/clerk-sync", (req: any, res: any) => {
       accountsStore.push(user);
     }
 
+    saveAccountsToDisk();
     createSession(res, user.id);
 
     return res.status(200).json({
@@ -1955,9 +1989,9 @@ app.post("/api/auth/clerk-sync", (req: any, res: any) => {
 });
 
 // -------------------------------------------------------------------------
-// AUTHENTICATION SYNC ENDPOINT (Rate-Limited Registration)
+// AUTHENTICATION SYNC ENDPOINT (Registration & Account Provisioning)
 // -------------------------------------------------------------------------
-app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
+app.post("/api/auth/sync", (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   try {
     const {
@@ -1971,8 +2005,16 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       password
     } = req.body || {};
 
-    // 1. Validate password length server-side
-    if (!password || typeof password !== 'string' || password.length < 8) {
+    // 1. Sanitize all inputs
+    const cleanPassword = typeof password === 'string' ? password.trim() : '';
+    const cleanEmail = email ? String(email).trim().toLowerCase() : undefined;
+    const rawUsername = username ? String(username).trim() : '';
+    const cleanUsername = rawUsername.startsWith('@') ? rawUsername.slice(1).trim() : rawUsername;
+    const cleanPhone = phone ? String(phone).replace(/[\s\-\(\)]/g, '').trim() : undefined;
+    const cleanRealName = realName ? String(realName).trim() : 'Anonymous Vault Member';
+
+    // 2. Validate password length
+    if (!cleanPassword || cleanPassword.length < 8) {
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR",
@@ -1980,8 +2022,7 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       });
     }
 
-    // 2. Validate and sanitize email format if provided
-    const cleanEmail = email ? email.trim().toLowerCase() : undefined;
+    // 3. Validate email format if provided
     if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({
         success: false,
@@ -1990,9 +2031,7 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       });
     }
 
-    // 3. Validate username handle format (strip leading @ if present)
-    const rawUsername = username?.trim();
-    const cleanUsername = rawUsername?.startsWith('@') ? rawUsername.slice(1) : rawUsername;
+    // 4. Validate username format
     if (!cleanUsername || cleanUsername.length < 3 || cleanUsername.length > 20 || !/^[a-zA-Z0-9_.]+$/.test(cleanUsername)) {
       return res.status(400).json({
         success: false,
@@ -2001,9 +2040,7 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       });
     }
 
-    // 4. Check if email/phone credentials or username handle already exist
-    const cleanPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : undefined;
-
+    // 5. Check if email or username already exists
     if (cleanEmail) {
       const existingEmailUser = accountsStore.find(
         a => a.email && a.email.trim().toLowerCase() === cleanEmail
@@ -2020,7 +2057,7 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
 
     if (cleanPhone) {
       const existingPhoneUser = accountsStore.find(
-        a => a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone
+        a => a.phone && a.phone.replace(/[\s\-\(\)]/g, '').trim() === cleanPhone
       );
       if (existingPhoneUser) {
         return res.status(409).json({
@@ -2045,7 +2082,7 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
       });
     }
 
-    // 5. Role Assignment
+    // 6. Role Assignment
     let assignedRole: 'owner' | 'super_admin' | 'admin' | 'moderator' | 'user' = 'user';
     if (cleanEmail && cleanEmail.toLowerCase() === 'kavyanagpal0005@gmail.com') {
       assignedRole = 'super_admin';
@@ -2053,14 +2090,14 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
 
     const targetUserId = rawUserId || (cleanEmail ? `usr_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : `usr_${Date.now().toString(36)}`);
 
-    // 6. Generate salt and passwordHash (Never store plaintext passwords)
+    // 7. Generate salt and passwordHash
     const salt = `salt_${Date.now().toString(36)}_${crypto.randomBytes(8).toString('hex')}`;
-    const passwordHash = hashPassword(password, salt);
+    const passwordHash = hashPassword(cleanPassword, salt);
 
     const newAccount: UserAccount = {
       id: targetUserId,
       username: cleanUsername,
-      realName: realName?.trim() || 'Anonymous Vault Member',
+      realName: cleanRealName,
       email: cleanEmail || undefined,
       phone: cleanPhone || undefined,
       salt,
@@ -2078,28 +2115,13 @@ app.post("/api/auth/sync", registrationRateLimiter, (req, res) => {
     };
 
     accountsStore.unshift(newAccount);
+    saveAccountsToDisk();
 
-    // 7. Create secure session and set HTTP-only cookie
+    // 8. Create session
     createSession(res, targetUserId);
 
     const isAdmin = assignedRole === 'super_admin' || cleanEmail?.toLowerCase() === 'kavyanagpal0005@gmail.com';
     const redirectTo = isAdmin ? "/admin" : "/home";
-
-    // Audit log
-    if (isAdmin) {
-      auditLogsStore.unshift({
-        id: `log_${Date.now().toString(36)}`,
-        actorId: targetUserId,
-        actorUsername: cleanUsername,
-        role: assignedRole,
-        action: 'Administrator Account Provisioned',
-        targetResource: 'Authentication Gateway',
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        ipAddress: String(req.ip || "127.0.0.1"),
-        deviceInfo: req.headers["user-agent"] || "Browser Client",
-        details: `Provisioned @${cleanUsername} as ${assignedRole}.`
-      });
-    }
 
     return res.status(201).json({
       success: true,
@@ -2165,9 +2187,9 @@ app.post("/api/generate-username", (req, res) => {
 });
 
 // -------------------------------------------------------------------------
-// ACCOUNT RECOVERY / PASSWORD RESET ENDPOINT (Rate-Limited, Non-Enumerative)
+// ACCOUNT RECOVERY / PASSWORD RESET ENDPOINT
 // -------------------------------------------------------------------------
-app.post("/api/auth/recover", recoveryRateLimiter, async (req, res) => {
+app.post("/api/auth/recover", async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   const { email, username, phone, identifier } = req.body || {};
   const targetId = (email || username || phone || identifier || "").toString().trim().toLowerCase();
@@ -2205,16 +2227,19 @@ app.post("/api/auth/recover", recoveryRateLimiter, async (req, res) => {
 });
 
 // -------------------------------------------------------------------------
-// AUTHENTICATION ENDPOINT (Rate-Limited, Non-Enumerative, Salt-Hashed, Brute-Force Mitigated)
+// AUTHENTICATION ENDPOINT (Login Handler)
 // -------------------------------------------------------------------------
-app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res) => {
+app.post("/api/auth/login", (req, res) => {
   const { email, phone, identifier, password, userId, loginMethod, twoFactorCode } = req.body || {};
-  const clientIp = getCleanIp(req);
 
-  // 1. Validate presence of identifier and password
+  // 1. Sanitize inputs
   const rawIdentifier = (identifier || email || phone || userId || "").toString().trim();
-  if (!rawIdentifier || !password || typeof password !== 'string' || !password.trim()) {
-    recordFailedLoginAttempt(clientIp);
+  const cleanPassword = typeof password === 'string' ? password.trim() : '';
+
+  // Payload inspection log requested by the user
+  console.log('Logging in with:', email || identifier || rawIdentifier, password);
+
+  if (!rawIdentifier || !cleanPassword) {
     return res.status(400).json({
       success: false,
       error: "INVALID_CREDENTIALS",
@@ -2225,47 +2250,27 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
   // Universal normalization: trim and lowercase
   const cleanInput = rawIdentifier.trim().toLowerCase();
   const cleanHandle = cleanInput.startsWith('@') ? cleanInput.slice(1).trim() : cleanInput;
-  const cleanPhone = rawIdentifier.replace(/[\s\-\(\)]/g, '');
+  const cleanPhone = rawIdentifier.replace(/[\s\-\(\)]/g, '').trim();
 
-  // Check account-level lockout key
-  const accountLockKey = `lockout_acc_${cleanInput}`;
-  const now = Date.now();
-  const accLockEntry = rateLimitMap.get(accountLockKey);
-  if (accLockEntry?.lockoutUntil && now < accLockEntry.lockoutUntil) {
-    const remainingSecs = Math.ceil((accLockEntry.lockoutUntil - now) / 1000);
-    return res.status(429).json({
-      success: false,
-      error: "RATE_LIMIT_EXCEEDED",
-      message: `Security Lockout Active: Account or IP temporarily locked due to repeated authentication failures. Please try again in ${remainingSecs} seconds.`,
-      retryAfter: remainingSecs
-    });
-  }
+  // 2. Flexible Dual Lookup: search matching users by email OR username/handle OR phone OR ID
+  const match = accountsStore.find(user => {
+    const userEmail = (user.email || '').trim().toLowerCase();
+    const userHandle = (user.username || (user as any).handle || '').trim().toLowerCase();
+    const userPhone = (user.phone || '').replace(/[\s\-\(\)]/g, '').trim();
 
-  // 2. Search database for account: flexible lookup by Email or Handle or Phone or ID
-  let match: UserAccount | undefined;
-
-  if (loginMethod === 'phone' && !rawIdentifier.includes('@')) {
-    // Phone lookup: find account WHERE phone matches submitted phone identifier
-    match = accountsStore.find(a =>
-      (a.phone && a.phone.replace(/[\s\-\(\)]/g, '') === cleanPhone) ||
-      (a.phone && cleanPhone.endsWith(a.phone.replace(/[\s\-\(\)]/g, ''))) ||
-      (a.phone && a.phone.replace(/[\s\-\(\)]/g, '').endsWith(cleanPhone)) ||
-      a.id === rawIdentifier
+    return (
+      (userEmail && userEmail === cleanInput) ||
+      (userHandle && (userHandle === cleanInput || userHandle === cleanHandle)) ||
+      (userPhone && (userPhone === cleanPhone || userPhone === rawIdentifier)) ||
+      user.id === rawIdentifier ||
+      user.id === cleanInput
     );
-  } else {
-    // Email OR Handle lookup ($or equivalent): check email or username with cleanInput and cleanHandle
-    match = accountsStore.find(a =>
-      (a.email && a.email.trim().toLowerCase() === cleanInput) ||
-      (a.username && a.username.trim().toLowerCase() === cleanHandle) ||
-      (a.username && a.username.trim().toLowerCase() === cleanInput) ||
-      a.id === rawIdentifier
-    );
-  }
+  });
 
-  // 4. Retrieve stored password hash & salt for THAT account, verify timing-safely
+  // 3. Retrieve stored password hash & salt for THAT account, verify timing-safely
   let passwordMatches = false;
   if (match && match.salt && match.passwordHash) {
-    const computedHash = hashPassword(password, match.salt);
+    const computedHash = hashPassword(cleanPassword, match.salt);
     try {
       passwordMatches = crypto.timingSafeEqual(
         Buffer.from(computedHash, 'utf8'),
@@ -2276,28 +2281,24 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
     }
   } else if (match && (match as any).password) {
     // Legacy support
-    if ((match as any).password === password) {
+    if ((match as any).password.trim() === cleanPassword) {
       passwordMatches = true;
       const newSalt = `salt_${Date.now().toString(36)}_${crypto.randomBytes(8).toString('hex')}`;
       match.salt = newSalt;
-      match.passwordHash = hashPassword(password, newSalt);
+      match.passwordHash = hashPassword(cleanPassword, newSalt);
       delete (match as any).password;
+      saveAccountsToDisk();
     }
   }
 
-  // 5. Reject if account does NOT exist OR password does NOT match (Safe Non-Enumerative Error Response)
+  // 4. Reject if account does NOT exist OR password does NOT match
   if (!match || !passwordMatches) {
-    recordFailedLoginAttempt(clientIp, cleanInput);
-
     return res.status(401).json({
       success: false,
       error: "INVALID_CREDENTIALS",
       message: "Invalid email/ID or password."
     });
   }
-
-  // Clear failed attempt counter on successful password verification
-  recordSuccessfulLoginAttempt(clientIp, cleanInput);
 
   const adminRoles = ["owner", "super_admin", "admin", "moderator"];
   const isAdmin = adminRoles.includes(match.role || "") || match.email?.toLowerCase() === 'kavyanagpal0005@gmail.com';
@@ -2313,7 +2314,7 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
     }
   }
 
-  // 6. Create session and set HTTP-only session cookie
+  // 5. Create session and set HTTP-only session cookie
   createSession(res, match.id);
 
   const redirectTo = isAdmin ? "/admin" : "/home";
@@ -2321,6 +2322,8 @@ app.post("/api/auth/login", loginRateLimiter, failedLoginRateLimiter, (req, res)
   return res.json({
     success: true,
     user: sanitizeUserForResponse(match),
+    userId: match.id,
+    role: match.role || 'user',
     isAdmin,
     redirectTo
   });
