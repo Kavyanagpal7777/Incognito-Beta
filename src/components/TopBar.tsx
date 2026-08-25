@@ -31,8 +31,6 @@ interface TopBarProps {
   onLogout: () => void;
   onOpenSettings: () => void;
   onNavigateTab: (tab: 'home' | 'leaderboard' | 'messages' | 'profile' | 'settings' | 'admin') => void;
-  isClerkConfigured?: boolean;
-  onOpenClerkSetup?: () => void;
 }
 
 export default function TopBar({
@@ -42,9 +40,7 @@ export default function TopBar({
   currentUser,
   onLogout,
   onOpenSettings,
-  onNavigateTab,
-  isClerkConfigured,
-  onOpenClerkSetup
+  onNavigateTab
 }: TopBarProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -293,24 +289,6 @@ export default function TopBar({
                       >
                         <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
                         <span>Admin Panel</span>
-                      </button>
-                    )}
-
-                    {onOpenClerkSetup && (
-                      <button
-                        onClick={() => {
-                          setIsProfileDropdownOpen(false);
-                          onOpenClerkSetup();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-xs text-purple-300 hover:text-purple-200 hover:bg-purple-600/20 flex items-center justify-between transition-colors cursor-pointer text-left"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                          <span>Clerk Status</span>
-                        </div>
-                        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
-                          {isClerkConfigured ? 'Active' : 'Setup'}
-                        </span>
                       </button>
                     )}
                   </div>

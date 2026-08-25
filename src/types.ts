@@ -17,7 +17,7 @@ export interface UserAccount {
   phone?: string; // Private
   countryCode?: string; // Private
   password?: string; // Private
-  clerkId?: string; // Private (stored for Clerk auth)
+  supabaseId?: string; // Private (stored for Supabase auth)
   googleId?: string; // Private (stored for auth only)
   facebookId?: string; // Private (stored for auth only)
   avatarUrl?: string; // Public Profile Picture
@@ -25,7 +25,7 @@ export interface UserAccount {
   karma: number; // Public Karma / Points
   joinDate: string; // Public Optional Join Date
   badges: string[]; // Public Badges
-  loginMethod: 'Email' | 'Mobile' | 'Google' | 'Facebook' | 'Clerk'; // Private
+  loginMethod: 'Email' | 'Mobile' | 'Google' | 'Facebook' | 'Supabase'; // Private
   deviceInfo: string; // Private
   ipAddress: string; // Private
   twoFactorEnabled?: boolean; // Private

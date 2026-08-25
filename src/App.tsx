@@ -55,15 +55,13 @@ import UserProfileModal from './components/UserProfileModal';
 import AdminGovernancePanel from './components/AdminGovernancePanel';
 import WelcomeLegalGateway from './components/WelcomeLegalGateway';
 import FloatingPostButton from './components/FloatingPostButton';
-import { ClerkAuthBridge, ClerkUserBadge } from './components/ClerkAuthBridge';
-import { ClerkConfigModal } from './components/ClerkConfigModal';
+import { supabase } from './lib/supabase';
 import { Home, Trophy, MessageSquare, Menu, X as CloseIcon } from 'lucide-react';
 
 const CURRENT_POLICY_VERSION = "1.0";
 
-export default function App({ isClerkConfigured = false }: { isClerkConfigured?: boolean }) {
+export default function App() {
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0, normalizedX: 0, normalizedY: 0 });
-  const [isClerkModalOpen, setIsClerkModalOpen] = useState(false);
 
   // Authentication & DB states (Persisted in Local Storage)
   const [accounts, setAccounts] = useState<UserAccount[]>([]);
@@ -176,9 +174,38 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
     // 3. Keep-alive check for auto-login
     const savedUser = localStorage.getItem('incognito_current_user') || localStorage.getItem('aetheris_current_user');
     if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+        setIsAuthenticated(true);
+      } catch (e) {
+        console.warn('Failed to parse saved user:', e);
+      }
     }
+
+    // 4. Supabase Auth Session listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        const sbEmail = session.user.email.toLowerCase();
+        const stored = getStoredUsers();
+        const found = stored.find(u => (u.email || '').toLowerCase() === sbEmail || u.supabaseId === session.user.id);
+        if (found) {
+          setCurrentUser(found);
+          setIsAuthenticated(true);
+        }
+      }
+    }).catch(err => {
+      console.warn('[SUPABASE_SESSION_INIT_WARNING]', err);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        // Handled via explicit logout if needed
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   // --- REAL-TIME NETWORK POST POLLING SYNC ---
@@ -539,7 +566,7 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
 
   // --- FORM SUBMIT HANDLERS ---
 
-  // LOGIN PROCESS
+  // LOGIN PROCESS (Powered by Supabase Auth & Secure Cryptographic Vault)
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -558,12 +585,40 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
     }
 
     setIsSubmitting(true);
-    setSubmitMessage('Verifying credentials...');
+    setSubmitMessage('Verifying Supabase credentials...');
 
     try {
+      // 1. Resolve email if handle was provided
+      let targetEmail = cleanInput;
+      if (!cleanInput.includes('@')) {
+        const matchedUser = storedUsers.find(u => 
+          (u.username || '').toLowerCase() === cleanHandle ||
+          (u.username || '').toLowerCase() === cleanInput
+        );
+        if (matchedUser?.email) {
+          targetEmail = matchedUser.email.toLowerCase();
+        }
+      }
+
+      // 2. Primary authentication via Supabase Auth (supabase.auth)
+      let supabaseSessionUser: any = null;
+      if (targetEmail.includes('@')) {
+        try {
+          const { data: sbData, error: sbError } = await supabase.auth.signInWithPassword({
+            email: targetEmail,
+            password: cleanPassword
+          });
+          if (sbData?.user && !sbError) {
+            supabaseSessionUser = sbData.user;
+          }
+        } catch (sbErr) {
+          console.warn('[SUPABASE_SIGNIN_EXCEPTION]', sbErr);
+        }
+      }
+
       const payload = {
         identifier: cleanInput,
-        email: loginMode === 'email' ? cleanInput : undefined,
+        email: loginMode === 'email' ? cleanInput : (targetEmail.includes('@') ? targetEmail : undefined),
         phone: loginMode === 'phone' ? cleanInput : undefined,
         password: cleanPassword,
         loginMethod: loginMode
@@ -585,7 +640,10 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
       setIsSubmitting(false);
 
       if (response.ok && data && data.success && data.user) {
-        const userAccount: UserAccount = data.user;
+        const userAccount: UserAccount = {
+          ...data.user,
+          supabaseId: supabaseSessionUser?.id || data.user.supabaseId
+        };
         setCurrentUser(userAccount);
         setIsAuthenticated(true);
 
@@ -720,12 +778,35 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
     setSubmitMessage('Provisioning secure user vault...');
 
     try {
-      const generatedUserId = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
+      // Primary authentication registration with Supabase Auth
+      let supabaseCreatedUserId: string | undefined;
+      if (signupMode === 'email' && cleanEmail) {
+        try {
+          const { data: sbSignUpData, error: sbSignUpError } = await supabase.auth.signUp({
+            email: cleanEmail,
+            password: cleanPassword,
+            options: {
+              data: {
+                username: cleanUsername,
+                real_name: cleanRealName || 'Anonymous Vault Member'
+              }
+            }
+          });
+          if (sbSignUpData?.user?.id) {
+            supabaseCreatedUserId = sbSignUpData.user.id;
+          }
+        } catch (sbErr) {
+          console.warn('[SUPABASE_SIGNUP_EXCEPTION]', sbErr);
+        }
+      }
+
+      const generatedUserId = supabaseCreatedUserId ? `usr_${supabaseCreatedUserId.replace(/[^a-zA-Z0-9_]/g, '_')}` : `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
       const response = await fetch('/api/auth/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: generatedUserId,
+          supabaseId: supabaseCreatedUserId,
           username: cleanUsername,
           realName: cleanRealName || 'Anonymous Vault Member',
           email: signupMode === 'email' ? cleanEmail : undefined,
@@ -844,7 +925,13 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
   };
 
   // LOGOUT PROCESS
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut().catch(() => {});
+    } catch {}
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    } catch {}
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem('incognito_current_user');
@@ -905,12 +992,6 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
 
   return (
     <InteractiveAtmosphere onMouseMoveCoords={setMouseCoords}>
-      {/* CLERK DASHBOARD CONFIGURATION / HELP MODAL */}
-      <ClerkConfigModal
-        isOpen={isClerkModalOpen}
-        onClose={() => setIsClerkModalOpen(false)}
-      />
-
       {/* WELCOME & LEGAL GATEWAY MODAL FOR UNVERIFIED / FIRST-TIME / UPDATED USERS */}
       {!hasAcceptedPolicy && (
         <WelcomeLegalGateway
@@ -1612,60 +1693,6 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
                         <ArrowRight className="w-4 h-4 text-white" />
                       </button>
 
-                      {/* CLERK SSO INTEGRATION SECTION */}
-                      <div className="pt-1">
-                        <div className="relative flex py-2 items-center">
-                          <div className="flex-grow border-t border-white/10"></div>
-                          <span className="flex-shrink mx-3 text-[9.5px] uppercase font-mono tracking-widest text-white/40">OR ENTER WITH</span>
-                          <div className="flex-grow border-t border-white/10"></div>
-                        </div>
-
-                        {isClerkConfigured ? (
-                          <ClerkAuthBridge
-                            activeMode={authTab === 'signup' ? 'signup' : 'login'}
-                            triggerToast={triggerToast}
-                            onSyncSuccess={(syncedUser, redirectTo) => {
-                              setCurrentUser(syncedUser);
-                              setIsAuthenticated(true);
-                              localStorage.setItem('incognito_current_user', JSON.stringify(syncedUser));
-                              if (redirectTo === '/admin') {
-                                setSidebarTab('admin');
-                                window.location.hash = '#/admin';
-                              } else {
-                                setSidebarTab('home');
-                                window.location.hash = '#/home';
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="space-y-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setIsClerkModalOpen(true)}
-                              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600/30 via-indigo-600/30 to-cyan-600/30 hover:from-purple-600/50 hover:via-indigo-600/50 hover:to-cyan-600/50 border border-purple-500/40 hover:border-cyan-400/60 text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_25px_rgba(0,217,255,0.35)] cursor-pointer group"
-                              id="btn-clerk-sso-cta"
-                            >
-                              <div className="p-1 rounded-lg bg-purple-500/30 border border-purple-400/40 text-purple-300 group-hover:scale-105 transition-transform">
-                                <KeyRound className="w-3.5 h-3.5 text-purple-300" />
-                              </div>
-                              <span>{authTab === 'signup' ? 'Sign Up with Clerk SSO' : 'Continue with Clerk (SSO / Passkey)'}</span>
-                              <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                            </button>
-                            <div className="flex items-center justify-center gap-1 text-[10px] text-purple-300/70">
-                              <span>Enterprise Clerk Auth Ready</span>
-                              <span>•</span>
-                              <button
-                                type="button"
-                                onClick={() => setIsClerkModalOpen(true)}
-                                className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                              >
-                                View Keys Setup
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
                       {/* Bottom Status Badges */}
                       <div className="pt-2 border-t border-white/5 flex items-center justify-center gap-2 text-[10px] text-white/50 font-medium">
                         <span>✓ Anonymous</span>
@@ -1773,8 +1800,6 @@ export default function App({ isClerkConfigured = false }: { isClerkConfigured?:
                 onLogout={handleLogout}
                 onOpenSettings={() => setSidebarTab('settings')}
                 onNavigateTab={setSidebarTab}
-                isClerkConfigured={isClerkConfigured}
-                onOpenClerkSetup={() => setIsClerkModalOpen(true)}
               />
 
               {/* SCROLLABLE MAIN CONTENT AREA */}

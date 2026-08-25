@@ -7,7 +7,6 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { generateAnonymousUsernames } from "./src/utils/usernameGenerator";
-import { clerkMiddleware } from "@clerk/express";
 
 dotenv.config();
 
@@ -15,17 +14,6 @@ const app = express();
 app.disable("x-powered-by"); // Hide Express footprint
 app.set("trust proxy", 1); // Trust Cloud Run / reverse proxy headers safely
 app.use(express.json({ limit: "1mb" })); // Restrict payload size against Denial-of-Service
-
-// Mount Clerk Express Middleware if keys are provided
-const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY;
-const clerkSecretKey = process.env.CLERK_SECRET_KEY;
-if (clerkPublishableKey || clerkSecretKey) {
-  try {
-    app.use(clerkMiddleware({ publishableKey: clerkPublishableKey, secretKey: clerkSecretKey }));
-  } catch (err) {
-    console.warn("[CLERK_MIDDLEWARE_INIT_WARNING]", err);
-  }
-}
 
 const PORT = 3000;
 
@@ -1117,7 +1105,7 @@ interface UserAccount {
   phone?: string;
   countryCode?: string;
   password?: string;
-  clerkId?: string;
+  supabaseId?: string;
   salt?: string;
   passwordHash?: string;
   googleId?: string;
@@ -1127,7 +1115,7 @@ interface UserAccount {
   karma: number;
   joinDate: string;
   badges: string[];
-  loginMethod: 'Email' | 'Mobile' | 'Google' | 'Facebook' | 'Clerk';
+  loginMethod: 'Email' | 'Mobile' | 'Google' | 'Facebook' | 'Supabase';
   deviceInfo: string;
   ipAddress: string;
   twoFactorEnabled?: boolean;
@@ -1898,39 +1886,39 @@ app.post('/api/auth/logout', (req: any, res) => {
 });
 
 // -------------------------------------------------------------------------
-// CLERK AUTHENTICATION SYNC ENDPOINT
+// SUPABASE AUTHENTICATION SYNC ENDPOINT
 // -------------------------------------------------------------------------
-app.post("/api/auth/clerk-sync", (req: any, res: any) => {
+app.post("/api/auth/supabase-sync", (req: any, res: any) => {
   res.setHeader("Content-Type", "application/json");
   try {
-    const { clerkId, email, username, fullName, imageUrl } = req.body || {};
+    const { supabaseId, email, username, fullName, avatarUrl } = req.body || {};
 
-    if (!clerkId && !email) {
+    if (!supabaseId && !email) {
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR",
-        message: "Missing Clerk authentication credentials."
+        message: "Missing Supabase authentication credentials."
       });
     }
 
     const cleanEmail = email ? email.trim().toLowerCase() : undefined;
     const isSuperAdmin = cleanEmail === "kavyanagpal0005@gmail.com";
 
-    // 1. Search for an existing account matching clerkId or email
+    // 1. Search for an existing account matching supabaseId or email
     let user = accountsStore.find(
-      (a) => (clerkId && a.clerkId === clerkId) || (cleanEmail && a.email?.toLowerCase() === cleanEmail)
+      (a) => (supabaseId && a.supabaseId === supabaseId) || (cleanEmail && a.email?.toLowerCase() === cleanEmail)
     );
 
     if (user) {
-      // Update Clerk metadata if not already attached
-      if (!user.clerkId && clerkId) user.clerkId = clerkId;
-      if (imageUrl && !user.avatarUrl) user.avatarUrl = imageUrl;
+      // Update Supabase metadata if not already attached
+      if (!user.supabaseId && supabaseId) user.supabaseId = supabaseId;
+      if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
       if (isSuperAdmin && user.role !== "super_admin") {
         user.role = "super_admin";
       }
     } else {
-      // Create new user account from Clerk profile
-      const rawHandle = username?.trim() || cleanEmail?.split("@")[0] || `node_${clerkId.slice(-6)}`;
+      // Create new user account from Supabase profile
+      const rawHandle = username?.trim() || cleanEmail?.split("@")[0] || `node_${(supabaseId || '').slice(-6)}`;
       let cleanHandle = rawHandle.replace(/[^a-zA-Z0-9_.]/g, "").slice(0, 20);
       if (cleanHandle.length < 3) cleanHandle = `user_${Date.now().toString(36)}`;
 
@@ -1941,21 +1929,21 @@ app.post("/api/auth/clerk-sync", (req: any, res: any) => {
         finalUsername = `${cleanHandle.slice(0, 16)}_${counter++}`;
       }
 
-      const generatedId = clerkId ? `usr_${clerkId.replace(/[^a-zA-Z0-9_]/g, "_")}` : `usr_clerk_${Date.now()}`;
+      const generatedId = supabaseId ? `usr_${supabaseId.replace(/[^a-zA-Z0-9_]/g, "_")}` : `usr_sb_${Date.now()}`;
       const randomSalt = crypto.randomBytes(16).toString("hex");
 
       user = {
         id: generatedId,
-        clerkId,
+        supabaseId,
         username: finalUsername,
-        realName: fullName?.trim() || "Clerk Verified Member",
+        realName: fullName?.trim() || "Supabase Verified Member",
         email: cleanEmail,
-        avatarUrl: imageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80",
-        bio: "Authenticated via Clerk Secure Gateway.",
+        avatarUrl: avatarUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80",
+        bio: "Authenticated via Supabase Secure Gateway.",
         karma: 25,
         joinDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-        badges: ["Verified", "Clerk SSO"],
-        loginMethod: "Clerk",
+        badges: ["Verified", "Supabase Auth"],
+        loginMethod: "Supabase",
         deviceInfo: req.headers["user-agent"] || "Web Browser",
         ipAddress: getCleanIp(req),
         role: isSuperAdmin ? "super_admin" : "user",
@@ -1979,11 +1967,11 @@ app.post("/api/auth/clerk-sync", (req: any, res: any) => {
       redirectTo: isSuperAdmin ? "/admin" : "/home"
     });
   } catch (err: any) {
-    console.error("[CLERK_SYNC_ERROR]", err);
+    console.error("[SUPABASE_SYNC_ERROR]", err);
     return res.status(500).json({
       success: false,
       error: "INTERNAL_ERROR",
-      message: "An error occurred during Clerk profile synchronization."
+      message: "An error occurred during Supabase profile synchronization."
     });
   }
 });
