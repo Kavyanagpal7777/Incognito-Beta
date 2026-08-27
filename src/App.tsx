@@ -55,7 +55,7 @@ import UserProfileModal from './components/UserProfileModal';
 import AdminGovernancePanel from './components/AdminGovernancePanel';
 import WelcomeLegalGateway from './components/WelcomeLegalGateway';
 import FloatingPostButton from './components/FloatingPostButton';
-import { supabase } from './lib/supabase';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Home, Trophy, MessageSquare, Menu, X as CloseIcon } from 'lucide-react';
 
 const CURRENT_POLICY_VERSION = "1.0";
@@ -183,28 +183,32 @@ export default function App() {
     }
 
     // 4. Supabase Auth Session listener
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email) {
-        const sbEmail = session.user.email.toLowerCase();
-        const stored = getStoredUsers();
-        const found = stored.find(u => (u.email || '').toLowerCase() === sbEmail || u.supabaseId === session.user.id);
-        if (found) {
-          setCurrentUser(found);
-          setIsAuthenticated(true);
+    let subscription: any = null;
+    if (isSupabaseConfigured) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.email) {
+          const sbEmail = session.user.email.toLowerCase();
+          const stored = getStoredUsers();
+          const found = stored.find(u => (u.email || '').toLowerCase() === sbEmail || u.supabaseId === session.user.id);
+          if (found) {
+            setCurrentUser(found);
+            setIsAuthenticated(true);
+          }
         }
-      }
-    }).catch(err => {
-      console.warn('[SUPABASE_SESSION_INIT_WARNING]', err);
-    });
+      }).catch(err => {
+        console.warn('[SUPABASE_SESSION_INIT_WARNING]', err);
+      });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        // Handled via explicit logout if needed
-      }
-    });
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!session) {
+          // Handled via explicit logout if needed
+        }
+      });
+      subscription = data?.subscription;
+    }
 
     return () => {
-      subscription?.unsubscribe();
+      subscription?.unsubscribe?.();
     };
   }, []);
 
@@ -602,7 +606,7 @@ export default function App() {
 
       // 2. Primary authentication via Supabase Auth (supabase.auth)
       let supabaseSessionUser: any = null;
-      if (targetEmail.includes('@')) {
+      if (isSupabaseConfigured && targetEmail.includes('@')) {
         try {
           const { data: sbData, error: sbError } = await supabase.auth.signInWithPassword({
             email: targetEmail,
@@ -780,7 +784,7 @@ export default function App() {
     try {
       // Primary authentication registration with Supabase Auth
       let supabaseCreatedUserId: string | undefined;
-      if (signupMode === 'email' && cleanEmail) {
+      if (isSupabaseConfigured && signupMode === 'email' && cleanEmail) {
         try {
           const { data: sbSignUpData, error: sbSignUpError } = await supabase.auth.signUp({
             email: cleanEmail,
@@ -926,9 +930,11 @@ export default function App() {
 
   // LOGOUT PROCESS
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut().catch(() => {});
-    } catch {}
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.auth.signOut().catch(() => {});
+      } catch {}
+    }
     try {
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     } catch {}

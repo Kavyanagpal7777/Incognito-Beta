@@ -457,6 +457,11 @@ app.use("/api", globalApiRateLimiter);
 // Mount admin API rate limiter for all /api/admin endpoints
 app.use("/api/admin", adminApiRateLimiter);
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", service: "incognito", timestamp: new Date().toISOString() });
+});
+
 // Serve uploaded images securely
 app.get("/api/uploads/:filename", (req, res) => {
   const filename = path.basename(req.params.filename); // Prevents path traversal
@@ -593,7 +598,7 @@ app.post("/api/generate-username", publicApiRateLimiter, async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       contents: promptText,
       config: {
         systemInstruction: `You are an expert anonymous username generator. Your goal is to generate unique, secure, privacy-first, and highly creative usernames for online profiles.
@@ -675,7 +680,7 @@ app.post("/api/ai-assist-post", publicApiRateLimiter, async (req, res) => {
       : `Generate a compelling, thought-provoking short post (2-3 sentences) suitable for an anonymous privacy-first social platform under ${community}. Topic or keyword hint: "${topic || "decentralized privacy and digital freedom"}". Do NOT use quotes or hashtags in the text.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       contents: promptText,
       config: {
         systemInstruction: "You are an AI assistant for INCOGNITO, an anonymous privacy-first social media network. Write authentic, insightful, intelligent, and captivating posts.",
@@ -2125,51 +2130,6 @@ app.post("/api/auth/sync", (req, res) => {
       success: false,
       error: "SERVER_ERROR",
       message: "An error occurred during registration. Please try again."
-    });
-  }
-});
-
-// -------------------------------------------------------------------------
-// ANONYMOUS USERNAME GENERATION ENDPOINT
-// -------------------------------------------------------------------------
-app.post("/api/generate-username", (req, res) => {
-  try {
-    const {
-      theme = "Cyberpunk",
-      count = 10,
-      maxLength = 20,
-      allowNumbers = true,
-      allowSpecial = true,
-      excludePersonal = [],
-      existingUsernames = []
-    } = req.body || {};
-
-    const allExistingUsernames = [
-      ...accountsStore.map(a => a.username),
-      ...(Array.isArray(existingUsernames) ? existingUsernames : [])
-    ];
-
-    const usernames = generateAnonymousUsernames({
-      theme: String(theme),
-      count: Math.min(Math.max(Number(count) || 10, 1), 20),
-      existingUsernames: allExistingUsernames,
-      excludePersonal: Array.isArray(excludePersonal) ? excludePersonal : [],
-      maxLength: Number(maxLength) || 20,
-      allowNumbers: Boolean(allowNumbers),
-      allowSpecial: Boolean(allowSpecial)
-    });
-
-    return res.json({
-      success: true,
-      usernames,
-      count: usernames.length,
-      theme
-    });
-  } catch (err: any) {
-    console.error("Error generating usernames:", err);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to generate anonymous usernames."
     });
   }
 });
